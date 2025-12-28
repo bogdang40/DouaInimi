@@ -5,7 +5,7 @@ from sqlalchemy import and_, or_, not_
 from app.extensions import db
 from app.models.user import User
 from app.models.profile import Profile
-from app.models.match import Like, Match
+from app.models.match import Like, Match, Pass
 from app.models.report import Block
 from app.forms.search import SearchForm
 
@@ -41,6 +41,10 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
     # Exclude users already liked
     liked_ids = [like.liked_id for like in user.likes_sent]
     excluded_ids.update(liked_ids)
+    
+    # Exclude users already passed on
+    passed_ids = Pass.get_passed_ids(user.id)
+    excluded_ids.update(passed_ids)
     
     if excluded_ids:
         query = query.filter(not_(User.id.in_(excluded_ids)))
@@ -214,11 +218,12 @@ def like_user(user_id):
 @discover_bp.route('/pass/<int:user_id>', methods=['POST'])
 @login_required
 def pass_user(user_id):
-    """Pass on a user (don't show again for now)."""
+    """Pass on a user (don't show again)."""
     is_swipe_mode = request.form.get('swipe_mode') == 'true'
     
-    # For now, we just don't create a like - they won't show up again
-    # In a more advanced system, we'd track "passes" separately
+    # Create a pass record so they won't appear again
+    if user_id != current_user.id:
+        Pass.create_pass(current_user.id, user_id)
     
     if is_swipe_mode:
         return jsonify({'success': True, 'is_match': False})

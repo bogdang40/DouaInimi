@@ -1,6 +1,42 @@
-"""Like and Match models for the matching system."""
+"""Like, Match, and Pass models for the matching system."""
 from datetime import datetime
 from app.extensions import db
+
+
+class Pass(db.Model):
+    """Record of one user passing (swiping left) on another."""
+    __tablename__ = 'passes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    passer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    passed_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('passer_id', 'passed_id', name='unique_pass'),
+    )
+    
+    @staticmethod
+    def create_pass(passer_id, passed_id):
+        """Create a pass record."""
+        existing = Pass.query.filter_by(passer_id=passer_id, passed_id=passed_id).first()
+        if existing:
+            return existing
+        
+        pass_record = Pass(passer_id=passer_id, passed_id=passed_id)
+        db.session.add(pass_record)
+        db.session.commit()
+        return pass_record
+    
+    @staticmethod
+    def get_passed_ids(user_id):
+        """Get list of user IDs this user has passed on."""
+        passes = Pass.query.filter_by(passer_id=user_id).all()
+        return [p.passed_id for p in passes]
+    
+    def __repr__(self):
+        return f'<Pass {self.passer_id} passed on {self.passed_id}>'
 
 
 class Like(db.Model):

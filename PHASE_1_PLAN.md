@@ -71,54 +71,148 @@ SSL: Cloudflare (free)
 
 | # | Step | Status | How To |
 |---|------|--------|--------|
-| 1 | **Push code to GitHub** | ⏳ DO NOW | `git push -u origin main` (from terminal) |
-| 2 | **Connect Azure to GitHub** | ⏳ Pending | App Service → Deployment Center → GitHub |
-| 3 | **Set startup command** | ⏳ Pending | App Service → Configuration → General settings |
-| 4 | **Run database migrations** | ⏳ Pending | App Service → SSH → `flask db upgrade` |
-| 5 | **Connect domain** | ⏳ Pending | App Service → Custom domains + Cloudflare DNS |
-| 6 | **Test live site** | ⏳ Pending | Visit https://2inimi.com |
+| 1 | **Commit latest changes** | ⏳ DO NOW | `git add -A && git commit -m "Add admin panel"` |
+| 2 | **Push code to GitHub** | ⏳ DO NOW | `git push -u origin main` |
+| 3 | **Connect Azure to GitHub** | ⏳ Pending | App Service → Deployment Center → GitHub |
+| 4 | **Set startup command** | ⏳ Pending | App Service → Configuration → General settings |
+| 5 | **Run database migrations** | ⏳ Pending | App Service → SSH → `flask db upgrade` |
+| 6 | **Create admin tables** | ⏳ Pending | SSH → run table creation script |
+| 7 | **Connect domain** | ⏳ Pending | App Service → Custom domains + Cloudflare DNS |
+| 8 | **Test live site** | ⏳ Pending | Visit https://2inimi.com |
+| 9 | **Test admin panel** | ⏳ Pending | Visit https://2inimi.com/admin |
 
 ---
 
-## 📋 DETAILED NEXT STEPS
+## 📋 DETAILED DEPLOYMENT GUIDE
 
-### Step 1: Push Code to GitHub
+### 🚨 IMPORTANT: What Happens with PostgreSQL
+
+The admin panel and all new features (passes tracking, reports, etc.) need database tables. Here's what you need to know:
+
+**Tables that will be created on first `flask db upgrade`:**
+- `users` - User accounts (with `is_approved` column for admin approval)
+- `profiles` - User dating profiles
+- `photos` - User photos
+- `likes` - Like records
+- `matches` - Mutual match records
+- `messages` - Chat messages
+- `blocks` - Block records
+- `reports` - User reports (for admin review)
+- `passes` - Pass/swipe-left tracking (NEW)
+
+**The admin panel uses hardcoded credentials** (not in database), so no special admin user setup needed.
+
+---
+
+### Step 1: Commit All Changes
 ```bash
 cd /Users/yztpp8/Desktop/Personal/Dating
+git add -A
+git commit -m "Add admin panel with user approvals, reports, analytics"
+```
+
+### Step 2: Push Code to GitHub
+```bash
 git push -u origin main
 ```
 Use your GitHub credentials (bogdang40) when prompted.
 
-### Step 2: Connect Azure to GitHub
-1. App Service → **Deployment Center** (left menu)
-2. Source: **GitHub**
-3. Sign in and authorize
-4. Organization: `bogdang40`
-5. Repository: `DouaInimi`
-6. Branch: `main`
-7. Click **Save**
+### Step 3: Connect Azure to GitHub (If Not Already Done)
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Open **App Service** → `douainimi`
+3. Left menu → **Deployment Center**
+4. Source: **GitHub**
+5. Sign in and authorize Azure to access your GitHub
+6. Organization: `bogdang40`
+7. Repository: `DouaInimi`
+8. Branch: `main`
+9. Click **Save**
 
-Azure will auto-deploy whenever you push to GitHub!
+✅ Azure will auto-deploy whenever you push to GitHub!
 
-### Step 3: Set Startup Command
+### Step 4: Set Startup Command
 1. App Service → **Configuration** → **General settings** tab
 2. Startup Command:
 ```bash
 gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
 ```
 3. Click **Save**
+4. Click **Restart** (top of page)
 
-### Step 4: Run Database Migrations
-After first deployment completes:
-1. App Service → **SSH** (under Development Tools)
-2. Run:
+### Step 5: Run Database Migrations (CRITICAL)
+After deployment completes (check Deployment Center for status):
+
+1. App Service → **SSH** (under Development Tools, or use **Console**)
+2. Run these commands:
+
 ```bash
+# Navigate to app directory
 cd /home/site/wwwroot
+
+# Set environment variables (if not already set)
+export FLASK_APP=run.py
+export FLASK_ENV=production
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Run migrations - this creates all tables
 flask db upgrade
 ```
 
-### Step 5: Connect Domain (2inimi.com)
+**Expected output:**
+```
+INFO  [alembic.runtime.migration] Running upgrade  -> xxxx, initial migration
+INFO  [alembic.runtime.migration] Running upgrade xxxx -> yyyy, add reports columns
+...
+```
+
+### Step 6: Create Passes Table (One-Time)
+The `passes` table may not be in migrations yet. Run this in SSH:
+
+```bash
+cd /home/site/wwwroot
+python << 'EOF'
+from app import create_app
+from app.extensions import db
+
+app = create_app()
+with app.app_context():
+    # Create all tables that don't exist
+    db.create_all()
+    print("✅ All tables created/verified!")
+EOF
+```
+
+### Step 7: Verify Database Tables
+Check that all tables exist:
+
+```bash
+cd /home/site/wwwroot
+python << 'EOF'
+from app import create_app
+from app.extensions import db
+from sqlalchemy import inspect
+
+app = create_app()
+with app.app_context():
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    print("📦 Database Tables:")
+    for table in sorted(tables):
+        print(f"  ✓ {table}")
+    
+    required = ['users', 'profiles', 'photos', 'likes', 'matches', 'messages', 'blocks', 'reports', 'passes']
+    missing = [t for t in required if t not in tables]
+    if missing:
+        print(f"\n⚠️ Missing tables: {missing}")
+    else:
+        print("\n✅ All required tables present!")
+EOF
+```
+
+### Step 8: Connect Domain (2inimi.com)
+
 **In Azure:**
 1. App Service → **Custom domains**
 2. Click **+ Add custom domain**
@@ -134,13 +228,83 @@ flask db upgrade
 
 5. Back in Azure → Validate → Add
 
-### Step 6: Test Everything!
+**SSL Certificate:**
+- Cloudflare handles SSL automatically (set to "Full" mode in Cloudflare SSL/TLS settings)
+
+### Step 9: Test Everything!
+
+**Public Site:**
 - [ ] Visit https://2inimi.com
 - [ ] Register a new account
-- [ ] Check email verification arrives
+- [ ] Check email verification arrives (SendGrid)
 - [ ] Complete profile
-- [ ] Upload a photo
+- [ ] Upload a photo (Azure Blob)
 - [ ] Test messaging
+
+**Admin Panel:**
+- [ ] Visit https://2inimi.com/admin
+- [ ] Login with: `gramisteanu40@gmail.com` / `Suceava$1`
+- [ ] Check Dashboard loads with stats
+- [ ] Test Approvals page
+- [ ] Test Users page
+- [ ] Test Reports page
+- [ ] Test Analytics page
+
+---
+
+## 🔧 TROUBLESHOOTING
+
+### "No module named 'app'" Error
+```bash
+cd /home/site/wwwroot
+pip install -r requirements.txt
+```
+
+### "Table doesn't exist" Error
+```bash
+cd /home/site/wwwroot
+flask db upgrade
+# Then run db.create_all() script above
+```
+
+### Admin Login Not Working
+Check the credentials match exactly:
+- Email: `gramisteanu40@gmail.com`
+- Password: `Suceava$1` (case-sensitive!)
+
+### Photos Not Uploading
+Check Azure Blob Storage connection string is set in App Service → Configuration:
+- `AZURE_STORAGE_CONNECTION_STRING`
+- `AZURE_STORAGE_CONTAINER` = `photos`
+
+### Emails Not Sending
+Check SendGrid API key is set:
+- `SENDGRID_API_KEY`
+- `MAIL_FROM` = `noreply@2inimi.com`
+
+---
+
+## 🔄 FUTURE DEPLOYMENTS
+
+After initial setup, deployments are automatic:
+
+```bash
+# Make changes locally
+git add -A
+git commit -m "Your change description"
+git push origin main
+```
+
+Azure will automatically:
+1. Detect the push
+2. Pull the code
+3. Install dependencies
+4. Restart the app
+
+**If you add new database columns:**
+1. Generate migration locally: `flask db migrate -m "description"`
+2. Push to GitHub
+3. SSH into Azure and run: `flask db upgrade`
 
 ---
 
@@ -158,13 +322,20 @@ flask db upgrade
 | **Discover (Grid)** | ✅ Complete | Browse profiles with Like/Pass |
 | **Discover (Swipe)** | ✅ Complete | Tinder-like card swiping interface |
 | **Search & Filters** | ✅ Complete | Filter by denomination, location, language, etc. |
-| **Matching System** | ✅ Complete | Mutual likes create matches |
+| **Matching System** | ✅ Complete | Mutual likes create matches, passes tracked |
 | **Messaging** | ✅ Complete | Real-time chat with Socket.IO |
 | **AJAX Messaging** | ✅ Complete | No page refresh, POST-Redirect-GET safe |
 | **Typing Indicators** | ✅ Complete | Real-time "typing..." display |
 | **Online Status** | ✅ Complete | Online now / Last active indicators |
 | **Light/Dark Theme** | ✅ Complete | Toggle with persistence |
 | **Admin Panel** | ✅ Complete | User management, reports, stats dashboard |
+| **Admin Login** | ✅ Complete | Separate hardcoded credentials, session-based |
+| **User Approvals** | ✅ Complete | Approve/reject new registrations |
+| **User Management** | ✅ Complete | View, suspend, verify, premium, delete users |
+| **Reports Dashboard** | ✅ Complete | Pending/resolved reports, admin actions |
+| **Flagged Content** | ✅ Complete | Users with pending reports for review |
+| **Analytics** | ✅ Complete | 30-day charts: signups, messages, matches |
+| **Height Units** | ✅ Complete | Toggle between cm and ft/in in profile |
 | **Profile Completion** | ✅ Complete | Progress bar and prompts |
 | **Unread Badge** | ✅ Complete | Message count in navbar |
 | **Conservative Fields** | ✅ Complete | Head covering, fasting, prayer frequency, etc. |
@@ -181,6 +352,43 @@ flask db upgrade
 | **PWA Support** | ✅ Complete | Manifest, service worker, offline support |
 | **Mobile Optimization** | ✅ Complete | Safe areas, touch targets, iOS keyboard |
 | **Native App Ready** | ✅ Complete | Capacitor config, deployment guide |
+
+---
+
+## 🔐 Admin Panel
+
+### Access
+- **URL:** `/admin` (or `/admin/login`)
+- **Separate login** from user authentication
+- **Hardcoded credentials** in `app/routes/admin.py`
+
+### Current Admin Credentials
+```python
+ADMIN_CREDENTIALS = {
+    'gramisteanu40@gmail.com': 'Suceava$1',
+}
+```
+
+### Features
+| Feature | URL | Description |
+|---------|-----|-------------|
+| Dashboard | `/admin/` | Stats overview, quick actions, recent signups |
+| Approvals | `/admin/approvals` | Approve/reject new user registrations |
+| Users | `/admin/users` | Search, filter, manage all users |
+| User Detail | `/admin/users/<id>` | Full user info, suspend/verify/delete |
+| Reports | `/admin/reports` | View and resolve user reports |
+| Flagged | `/admin/flagged` | Auto-flagged content for review |
+| Analytics | `/admin/analytics` | 30-day charts for signups/messages/matches |
+| Settings | `/admin/settings` | System info, quick links |
+
+### Adding New Admins
+Edit `app/routes/admin.py` and add to the `ADMIN_CREDENTIALS` dict:
+```python
+ADMIN_CREDENTIALS = {
+    'gramisteanu40@gmail.com': 'Suceava$1',
+    'another@admin.com': 'SecurePassword123',
+}
+```
 
 ---
 

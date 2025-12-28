@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Două Inimi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        surface: {
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-950 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-4">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-gradient-to-br from-amber-500 to-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-900/20 transform rotate-3 hover:rotate-0 transition-all duration-300">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="w-12 h-12 rounded-lg">
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Admin Portal</h1>
+            <p class="text-gray-400">Două Inimi - Authorized Access Only</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-6">
+                    {% for category, message in messages %}
+                        <div class="{% if category == 'error' %}bg-red-900/50 border-red-500/50 text-red-300{% else %}bg-green-900/50 border-green-500/50 text-green-300{% endif %} border rounded-lg px-4 py-3 mb-2">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Login Form -->
+        <div class="bg-surface-900 rounded-2xl shadow-lg p-8 border border-white/5">
+            <form method="POST" action="{{ url_for('admin.admin_login') }}" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- Email -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                        <i data-lucide="mail" class="w-4 h-4 inline mr-2"></i>Email
+                    </label>
+                    <input type="email" 
+                           id="email" 
+                           name="email" 
+                           required
+                           autofocus
+                           autocomplete="email"
+                           class="w-full bg-surface-950 text-white border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors"
+                           placeholder="Enter admin email">
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
+                        <i data-lucide="lock" class="w-4 h-4 inline mr-2"></i>Password
+                    </label>
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           required
+                           autocomplete="current-password"
+                           class="w-full bg-surface-950 text-white border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors"
+                           placeholder="Enter admin password">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" 
+                        class="w-full bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-lg shadow-amber-900/30">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    <span>Login to Admin Panel</span>
+                </button>
+            </form>
+
+            <!-- Back to Home -->
+            <div class="mt-6 text-center">
+                <a href="{{ url_for('main.index') }}" class="text-gray-400 hover:text-white text-sm transition-colors inline-flex items-center">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>Back to Home
+                </a>
+            </div>
+        </div>
+
+        <!-- Security Notice -->
+        <div class="mt-6 text-center">
+            <p class="text-gray-500 text-xs flex items-center justify-center">
+                <i data-lucide="shield" class="w-4 h-4 mr-1"></i>
+                This area is restricted to authorized administrators only.
+            </p>
+        </div>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
+

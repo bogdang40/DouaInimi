@@ -1,7 +1,7 @@
-"""Admin panel routes."""
+"""Admin panel routes - Full user management and approval system."""
 from functools import wraps
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify
-from flask_login import login_required, current_user
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify, session
+from flask_login import current_user
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
 from app.extensions import db
@@ -13,16 +13,69 @@ from app.models.report import Report, Block
 
 admin_bp = Blueprint('admin', __name__)
 
+# ========== HARDCODED ADMIN CREDENTIALS ==========
+# These are separate from the user database
+ADMIN_CREDENTIALS = {
+    'gramisteanu40@gmail.com': 'Suceava$1',
+}
+
 
 def admin_required(f):
-    """Decorator to require admin access."""
+    """Decorator to require admin access via session."""
     @wraps(f)
-    @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
-            abort(403)
+        if not session.get('is_admin_authenticated'):
+            return redirect(url_for('admin.admin_login'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+# ========== ADMIN LOGIN ==========
+
+@admin_bp.route('/login', methods=['GET', 'POST'])
+def admin_login():
+    """Separate admin login page with hardcoded credentials."""
+    # Already logged in as admin?
+    if session.get('is_admin_authenticated'):
+        return redirect(url_for('admin.dashboard'))
+    
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        
+        # Check against hardcoded credentials
+        if email in ADMIN_CREDENTIALS and ADMIN_CREDENTIALS[email] == password:
+            session['is_admin_authenticated'] = True
+            session['admin_email'] = email
+            flash('Welcome to the Admin Panel!', 'success')
+            return redirect(url_for('admin.dashboard'))
+        else:
+            flash('Invalid admin credentials.', 'error')
+    
+    return render_template('admin/login.html')
+
+
+@admin_bp.route('/logout')
+def admin_logout():
+    """Logout from admin panel."""
+    session.pop('is_admin_authenticated', None)
+    session.pop('admin_email', None)
+    flash('Logged out from admin panel.', 'success')
+    return redirect(url_for('admin.admin_login'))
+
+
+@admin_bp.context_processor
+def inject_admin_counts():
+    """Inject admin counts into all admin templates."""
+    if session.get('is_admin_authenticated'):
+        pending_approval_count = User.query.filter_by(is_approved=False, is_active=True).count()
+        pending_reports_count = Report.query.filter_by(status='pending').count()
+        return {
+            'pending_approval_count': pending_approval_count,
+            'pending_reports_count': pending_reports_count,
+            'now': datetime.utcnow
+        }
+    return {'now': datetime.utcnow}
 
 
 @admin_bp.route('/')
@@ -41,6 +94,7 @@ def dashboard():
     active_users = User.query.filter(
         User.last_active >= datetime.utcnow() - timedelta(minutes=5)
     ).count()
+    pending_approvals = User.query.filter_by(is_approved=False, is_active=True).count()
     
     # Match & message stats
     total_matches = Match.query.filter_by(is_active=True).count()
@@ -63,7 +117,7 @@ def dashboard():
     denomination_stats = db.session.query(
         Profile.denomination,
         func.count(Profile.id)
-    ).group_by(Profile.denomination).all()
+    ).group_by(Profile.denomination).order_by(desc(func.count(Profile.id))).all()
     
     # Gender breakdown
     gender_stats = db.session.query(
@@ -77,6 +131,7 @@ def dashboard():
         new_users_week=new_users_week,
         verified_users=verified_users,
         active_users=active_users,
+        pending_approvals=pending_approvals,
         total_matches=total_matches,
         new_matches_today=new_matches_today,
         total_messages=total_messages,
@@ -88,6 +143,71 @@ def dashboard():
         gender_stats=gender_stats
     )
 
+
+# ========== APPROVALS ==========
+
+@admin_bp.route('/approvals')
+@admin_required
+def approvals():
+    """User approval page."""
+    pending_users = User.query.filter_by(is_approved=False, is_active=True)\
+        .order_by(User.created_at.asc()).all()
+    
+    stats = {
+        'pending': len(pending_users),
+        'approved': User.query.filter_by(is_approved=True).count(),
+        'rejected': 0  # We delete rejected users, so this is always 0
+    }
+    
+    return render_template('admin/approvals.html', 
+                          pending_users=pending_users, 
+                          stats=stats)
+
+
+@admin_bp.route('/approvals/<int:user_id>/approve', methods=['POST'])
+@admin_required
+def approve_user(user_id):
+    """Approve a user registration."""
+    user = User.query.get_or_404(user_id)
+    
+    user.is_approved = True
+    db.session.commit()
+    
+    flash(f"User {user.email} has been approved!", "success")
+    return redirect(url_for('admin.approvals'))
+
+
+@admin_bp.route('/approvals/<int:user_id>/reject', methods=['POST'])
+@admin_required
+def reject_user(user_id):
+    """Reject and delete a user registration."""
+    user = User.query.get_or_404(user_id)
+    
+    email = user.email
+    db.session.delete(user)
+    db.session.commit()
+    
+    flash(f"User {email} has been rejected and deleted.", "success")
+    return redirect(url_for('admin.approvals'))
+
+
+@admin_bp.route('/approvals/approve-all', methods=['POST'])
+@admin_required
+def approve_all():
+    """Approve all pending users."""
+    pending_users = User.query.filter_by(is_approved=False, is_active=True).all()
+    count = len(pending_users)
+    
+    for user in pending_users:
+        user.is_approved = True
+    
+    db.session.commit()
+    
+    flash(f"Approved {count} users!", "success")
+    return redirect(url_for('admin.approvals'))
+
+
+# ========== USERS ==========
 
 @admin_bp.route('/users')
 @admin_required
@@ -164,7 +284,7 @@ def toggle_user_active(user_id):
     action = "reactivated" if user.is_active else "suspended"
     flash(f"User {user.email} has been {action}.", "success")
     
-    return redirect(url_for('admin.user_detail', user_id=user_id))
+    return redirect(request.referrer or url_for('admin.user_detail', user_id=user_id))
 
 
 @admin_bp.route('/users/<int:user_id>/toggle-verified', methods=['POST'])
@@ -184,7 +304,7 @@ def toggle_user_verified(user_id):
     action = "verified" if user.is_verified else "unverified"
     flash(f"User {user.email} has been {action}.", "success")
     
-    return redirect(url_for('admin.user_detail', user_id=user_id))
+    return redirect(request.referrer or url_for('admin.user_detail', user_id=user_id))
 
 
 @admin_bp.route('/users/<int:user_id>/toggle-premium', methods=['POST'])
@@ -199,7 +319,7 @@ def toggle_user_premium(user_id):
     action = "granted" if user.is_premium else "revoked"
     flash(f"Premium status {action} for {user.email}.", "success")
     
-    return redirect(url_for('admin.user_detail', user_id=user_id))
+    return redirect(request.referrer or url_for('admin.user_detail', user_id=user_id))
 
 
 @admin_bp.route('/users/<int:user_id>/toggle-admin', methods=['POST'])
@@ -218,7 +338,7 @@ def toggle_user_admin(user_id):
     action = "granted" if user.is_admin else "revoked"
     flash(f"Admin status {action} for {user.email}.", "success")
     
-    return redirect(url_for('admin.user_detail', user_id=user_id))
+    return redirect(request.referrer or url_for('admin.user_detail', user_id=user_id))
 
 
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
@@ -238,6 +358,8 @@ def delete_user(user_id):
     flash(f"User {email} has been permanently deleted.", "success")
     return redirect(url_for('admin.users'))
 
+
+# ========== REPORTS ==========
 
 @admin_bp.route('/reports')
 @admin_required
@@ -303,7 +425,6 @@ def resolve_report(report_id):
         report.resolution_notes = f"Warning issued. {notes}"
         report.resolved_by_id = current_user.id
         report.resolved_at = datetime.utcnow()
-        # Could send warning email here
         flash("Warning issued to user.", "success")
     
     elif action == 'suspend':
@@ -337,10 +458,53 @@ def resolve_report(report_id):
     return redirect(url_for('admin.reports'))
 
 
-@admin_bp.route('/stats/api')
+# ========== FLAGGED CONTENT ==========
+
+@admin_bp.route('/flagged')
 @admin_required
-def stats_api():
-    """API endpoint for dashboard charts."""
+def flagged_content():
+    """View flagged content that needs review.
+    
+    Shows profiles that have been reported multiple times.
+    """
+    # Get profiles with multiple pending reports
+    from sqlalchemy import func
+    
+    flagged_users = db.session.query(
+        User,
+        func.count(Report.id).label('report_count')
+    ).join(Report, Report.reported_id == User.id)\
+     .filter(Report.status == 'pending')\
+     .group_by(User.id)\
+     .having(func.count(Report.id) >= 1)\
+     .order_by(func.count(Report.id).desc())\
+     .all()
+    
+    return render_template('admin/flagged.html', flagged_users=flagged_users)
+
+
+@admin_bp.route('/flagged/<int:user_id>/dismiss', methods=['POST'])
+@admin_required
+def dismiss_flagged(user_id):
+    """Dismiss all pending reports for a user."""
+    reports = Report.query.filter_by(reported_id=user_id, status='pending').all()
+    
+    for report in reports:
+        report.status = 'dismissed'
+        report.resolved_at = datetime.utcnow()
+    
+    db.session.commit()
+    
+    flash(f"Dismissed {len(reports)} reports.", "success")
+    return redirect(url_for('admin.flagged_content'))
+
+
+# ========== ANALYTICS ==========
+
+@admin_bp.route('/analytics')
+@admin_required
+def analytics():
+    """Analytics dashboard."""
     # Get daily signups for last 30 days
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     
@@ -361,8 +525,56 @@ def stats_api():
      .order_by(func.date(Message.created_at))\
      .all()
     
+    # Get daily matches for last 30 days
+    daily_matches = db.session.query(
+        func.date(Match.matched_at),
+        func.count(Match.id)
+    ).filter(Match.matched_at >= thirty_days_ago)\
+     .group_by(func.date(Match.matched_at))\
+     .order_by(func.date(Match.matched_at))\
+     .all()
+    
+    return render_template('admin/analytics.html',
+        daily_signups=daily_signups,
+        daily_messages=daily_messages,
+        daily_matches=daily_matches
+    )
+
+
+# ========== SETTINGS ==========
+
+@admin_bp.route('/settings')
+@admin_required
+def settings():
+    """Admin settings page."""
+    return render_template('admin/settings.html')
+
+
+# ========== API ENDPOINTS ==========
+
+@admin_bp.route('/api/stats')
+@admin_required
+def stats_api():
+    """API endpoint for dashboard charts."""
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    
+    daily_signups = db.session.query(
+        func.date(User.created_at),
+        func.count(User.id)
+    ).filter(User.created_at >= thirty_days_ago)\
+     .group_by(func.date(User.created_at))\
+     .order_by(func.date(User.created_at))\
+     .all()
+    
+    daily_messages = db.session.query(
+        func.date(Message.created_at),
+        func.count(Message.id)
+    ).filter(Message.created_at >= thirty_days_ago)\
+     .group_by(func.date(Message.created_at))\
+     .order_by(func.date(Message.created_at))\
+     .all()
+    
     return jsonify({
         'daily_signups': [{'date': str(d[0]), 'count': d[1]} for d in daily_signups],
         'daily_messages': [{'date': str(d[0]), 'count': d[1]} for d in daily_messages],
     })
-

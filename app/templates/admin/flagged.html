@@ -1,0 +1,111 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Flagged Content{% endblock %}
+{% block header %}Flagged Content{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Info -->
+    <div class="bg-orange-900/20 border border-orange-500/30 rounded-lg p-4 flex items-start gap-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0"></i>
+        <div>
+            <h3 class="text-orange-400 font-bold text-sm mb-1">Reported Users</h3>
+            <p class="text-gray-400 text-xs">
+                These users have been reported by other members. Review the reports and take appropriate action.
+            </p>
+        </div>
+    </div>
+
+    {% if flagged_users %}
+    <!-- Flagged Users Table -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-surface-950 border-b border-white/5">
+                <tr>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">User</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Reports</th>
+                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                {% for user, report_count in flagged_users %}
+                <tr class="hover:bg-surface-800 transition-colors">
+                    <!-- User Info -->
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            {% if user.primary_photo_url %}
+                            <img src="{{ user.primary_photo_url }}" alt="" class="w-10 h-10 rounded-full object-cover">
+                            {% else %}
+                            <div class="w-10 h-10 rounded-full bg-surface-700 flex items-center justify-center">
+                                <i data-lucide="user" class="w-5 h-5 text-gray-500"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <div class="text-white font-medium">{{ user.profile.first_name if user.profile else 'No Profile' }}</div>
+                                <div class="text-gray-500 text-sm">{{ user.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Report Count -->
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold 
+                            {% if report_count >= 3 %}bg-red-900/30 text-red-400 border border-red-500/30
+                            {% elif report_count >= 2 %}bg-orange-900/30 text-orange-400 border border-orange-500/30
+                            {% else %}bg-yellow-900/30 text-yellow-400 border border-yellow-500/30{% endif %}">
+                            <i data-lucide="flag" class="w-3 h-3"></i>
+                            {{ report_count }} pending report{{ 's' if report_count != 1 else '' }}
+                        </span>
+                    </td>
+                    
+                    <!-- User Status -->
+                    <td class="px-6 py-4">
+                        {% if not user.is_active %}
+                        <span class="text-red-400 text-sm">Deactivated</span>
+                        {% elif not user.is_approved %}
+                        <span class="text-yellow-400 text-sm">Pending Approval</span>
+                        {% else %}
+                        <span class="text-green-400 text-sm">Active</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Actions -->
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" 
+                               class="px-3 py-1.5 bg-surface-800 hover:bg-surface-700 text-gray-300 rounded text-sm transition-colors">
+                                View
+                            </a>
+                            <form method="POST" action="{{ url_for('admin.dismiss_flagged', user_id=user.id) }}" class="inline">
+                                <button type="submit" onclick="return confirm('Dismiss all pending reports for this user?')"
+                                        class="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/40 text-green-400 rounded text-sm transition-colors">
+                                    Dismiss All
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.toggle_user_status', user_id=user.id) }}" class="inline">
+                                <button type="submit" onclick="return confirm('{% if user.is_active %}Deactivate{% else %}Activate{% endif %} this user?')"
+                                        class="px-3 py-1.5 {% if user.is_active %}bg-red-600/20 hover:bg-red-600/40 text-red-400{% else %}bg-blue-600/20 hover:bg-blue-600/40 text-blue-400{% endif %} rounded text-sm transition-colors">
+                                    {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% else %}
+    <!-- No Flagged Content -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-12 text-center">
+        <div class="w-16 h-16 bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+            <i data-lucide="check" class="w-8 h-8 text-green-400"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">All Clear!</h3>
+        <p class="text-gray-400">No reported users to review.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

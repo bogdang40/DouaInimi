@@ -89,3 +89,24 @@ def service_worker():
     response.headers['Cache-Control'] = 'no-cache'
     return response
 
+
+@main_bp.route('/favicon.ico')
+def favicon():
+    """Serve favicon from root."""
+    return send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'favicon.ico',
+        mimetype='image/x-icon'
+    )
+
+
+@main_bp.route('/apple-touch-icon.png')
+@main_bp.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon():
+    """Serve Apple touch icon from root."""
+    return send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'apple-touch-icon.png',
+        mimetype='image/png'
+    )
+

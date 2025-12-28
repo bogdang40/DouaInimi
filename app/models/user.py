@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     
     # Status flags
     is_active = db.Column(db.Boolean, default=True)
+    is_approved = db.Column(db.Boolean, default=False)  # Admin must approve new users
     is_verified = db.Column(db.Boolean, default=False)
     is_premium = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False)

@@ -1,0 +1,97 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Analytics{% endblock %}
+{% block header %}Analytics{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Chart Cards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Daily Signups -->
+        <div class="bg-surface-900 rounded-xl border border-white/5 p-6">
+            <h3 class="text-lg font-bold text-white mb-4">Daily Signups (Last 30 Days)</h3>
+            <div class="h-64 flex items-end gap-1">
+                {% set max_signups = daily_signups|map(attribute=1)|max if daily_signups else 1 %}
+                {% for date, count in daily_signups %}
+                <div class="flex-1 bg-blue-500/20 hover:bg-blue-500/40 transition-colors rounded-t relative group cursor-default"
+                     style="height: {{ (count / max_signups * 100) if max_signups > 0 else 0 }}%">
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-surface-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {{ date if date else 'Unknown' }}: {{ count }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="flex-1 text-center text-gray-500 py-12">No data yet</div>
+                {% endfor %}
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span>30 days ago</span>
+                <span>Today</span>
+            </div>
+        </div>
+
+        <!-- Daily Messages -->
+        <div class="bg-surface-900 rounded-xl border border-white/5 p-6">
+            <h3 class="text-lg font-bold text-white mb-4">Daily Messages (Last 30 Days)</h3>
+            <div class="h-64 flex items-end gap-1">
+                {% set max_messages = daily_messages|map(attribute=1)|max if daily_messages else 1 %}
+                {% for date, count in daily_messages %}
+                <div class="flex-1 bg-purple-500/20 hover:bg-purple-500/40 transition-colors rounded-t relative group cursor-default"
+                     style="height: {{ (count / max_messages * 100) if max_messages > 0 else 0 }}%">
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-surface-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {{ date if date else 'Unknown' }}: {{ count }}
+                    </div>
+                </div>
+                {% else %}
+                <div class="flex-1 text-center text-gray-500 py-12">No data yet</div>
+                {% endfor %}
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span>30 days ago</span>
+                <span>Today</span>
+            </div>
+        </div>
+
+        <!-- Daily Matches -->
+        <div class="bg-surface-900 rounded-xl border border-white/5 p-6 lg:col-span-2">
+            <h3 class="text-lg font-bold text-white mb-4">Daily Matches (Last 30 Days)</h3>
+            <div class="h-48 flex items-end gap-1">
+                {% set max_matches = daily_matches|map(attribute=1)|max if daily_matches else 1 %}
+                {% for date, count in daily_matches %}
+                <div class="flex-1 bg-pink-500/20 hover:bg-pink-500/40 transition-colors rounded-t relative group cursor-default"
+                     style="height: {{ (count / max_matches * 100) if max_matches > 0 else 0 }}%">
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-surface-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                        {{ date if date else 'Unknown' }}: {{ count }} matches
+                    </div>
+                </div>
+                {% else %}
+                <div class="flex-1 text-center text-gray-500 py-12">No data yet</div>
+                {% endfor %}
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span>30 days ago</span>
+                <span>Today</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-6">
+        <h3 class="text-lg font-bold text-white mb-4">30-Day Summary</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center p-4 bg-surface-950 rounded-lg">
+                <p class="text-3xl font-bold text-blue-400">{{ daily_signups|map(attribute=1)|sum if daily_signups else 0 }}</p>
+                <p class="text-gray-400 text-sm mt-1">Total Signups</p>
+            </div>
+            <div class="text-center p-4 bg-surface-950 rounded-lg">
+                <p class="text-3xl font-bold text-purple-400">{{ daily_messages|map(attribute=1)|sum if daily_messages else 0 }}</p>
+                <p class="text-gray-400 text-sm mt-1">Total Messages</p>
+            </div>
+            <div class="text-center p-4 bg-surface-950 rounded-lg">
+                <p class="text-3xl font-bold text-pink-400">{{ daily_matches|map(attribute=1)|sum if daily_matches else 0 }}</p>
+                <p class="text-gray-400 text-sm mt-1">Total Matches</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel{% endblock %} - Două Inimi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        surface: {
+                            50: '#fafafa',
+                            100: '#f4f4f5',
+                            200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            400: '#a1a1aa',
+                            500: '#71717a',
+                            600: '#52525b',
+                            700: '#3f3f46',
+                            800: '#27272a',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Cormorant Garamond', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+    </style>
+</head>
+<body class="bg-surface-950 text-white font-sans antialiased" x-data="{ sidebarOpen: false }">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-surface-900 border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col"
+               :class="{'translate-x-0': sidebarOpen, '-translate-x-full': !sidebarOpen}">
+            
+            <!-- Sidebar Header -->
+            <div class="flex items-center justify-center h-16 bg-surface-950 border-b border-white/5">
+                <a href="{{ url_for('admin.dashboard') }}" class="flex items-center gap-3 font-bold text-xl tracking-wider text-white">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="w-8 h-8 rounded-lg">
+                    <span class="font-display">Admin</span>
+                </a>
+            </div>
+
+            <!-- Sidebar Content -->
+            <div class="flex-1 overflow-y-auto py-4">
+                <nav class="px-4 space-y-1">
+                    
+                    <!-- Dashboard -->
+                    <a href="{{ url_for('admin.dashboard') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if request.endpoint == 'admin.dashboard' }}">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3 {{ 'text-amber-500' if request.endpoint == 'admin.dashboard' else 'group-hover:text-amber-400' }}"></i>
+                        <span class="font-medium">Dashboard</span>
+                    </a>
+
+                    <!-- User Management -->
+                    <div class="mt-6 mb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Users</div>
+                    
+                    <a href="{{ url_for('admin.approvals') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'approvals' in request.endpoint }}">
+                        <i data-lucide="user-check" class="w-5 h-5 mr-3 {{ 'text-yellow-500' if 'approvals' in request.endpoint else 'group-hover:text-yellow-400' }}"></i>
+                        <span class="font-medium">Approvals</span>
+                        {% if pending_approval_count and pending_approval_count > 0 %}
+                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ pending_approval_count }}</span>
+                        {% endif %}
+                    </a>
+                    
+                    <a href="{{ url_for('admin.users') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if request.endpoint == 'admin.users' }}">
+                        <i data-lucide="users" class="w-5 h-5 mr-3 {{ 'text-green-500' if request.endpoint == 'admin.users' else 'group-hover:text-green-400' }}"></i>
+                        <span class="font-medium">All Users</span>
+                    </a>
+
+                    <!-- Safety -->
+                    <div class="mt-6 mb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Safety</div>
+                    
+                    <a href="{{ url_for('admin.reports') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'reports' in request.endpoint }}">
+                        <i data-lucide="flag" class="w-5 h-5 mr-3 {{ 'text-red-500' if 'reports' in request.endpoint else 'group-hover:text-red-400' }}"></i>
+                        <span class="font-medium">Reports</span>
+                        {% if pending_reports_count and pending_reports_count > 0 %}
+                        <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ pending_reports_count }}</span>
+                        {% endif %}
+                    </a>
+                    
+                    <a href="{{ url_for('admin.flagged_content') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'flagged' in request.endpoint }}">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 mr-3 {{ 'text-orange-500' if 'flagged' in request.endpoint else 'group-hover:text-orange-400' }}"></i>
+                        <span class="font-medium">Flagged Content</span>
+                    </a>
+
+                    <!-- Analytics -->
+                    <div class="mt-6 mb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Analytics</div>
+                    
+                    <a href="{{ url_for('admin.analytics') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'analytics' in request.endpoint }}">
+                        <i data-lucide="bar-chart-3" class="w-5 h-5 mr-3 {{ 'text-purple-500' if 'analytics' in request.endpoint else 'group-hover:text-purple-400' }}"></i>
+                        <span class="font-medium">Analytics</span>
+                    </a>
+
+                    <!-- System -->
+                    <div class="mt-6 mb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">System</div>
+                    
+                    <a href="{{ url_for('admin.settings') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'settings' in request.endpoint }}">
+                        <i data-lucide="settings" class="w-5 h-5 mr-3 {{ 'text-gray-500' if 'settings' in request.endpoint else 'group-hover:text-gray-400' }}"></i>
+                        <span class="font-medium">Settings</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-white/5 bg-surface-950">
+                <a href="{{ url_for('main.index') }}" class="flex items-center px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+                    <i data-lucide="external-link" class="w-4 h-4 mr-3"></i> Back to App
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            
+            <!-- Top Header -->
+            <header class="h-16 bg-surface-900 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 z-40">
+                <div class="flex items-center">
+                    <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden text-gray-400 hover:text-white focus:outline-none p-2 mr-2">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                    <h2 class="text-xl font-bold text-white truncate font-display">
+                        {% block header %}{{ self.title() }}{% endblock %}
+                    </h2>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Database Status -->
+                    <div class="hidden md:flex items-center gap-2 px-3 py-1.5 bg-green-900/30 border border-green-500/30 rounded-lg">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-xs text-green-400 font-medium">PostgreSQL Connected</span>
+                    </div>
+
+                    <div class="h-6 w-px bg-white/10 hidden sm:block"></div>
+
+                    <!-- Admin Profile -->
+                    <div class="flex items-center gap-3">
+                        <div class="text-right hidden sm:block">
+                            <div class="text-sm font-bold text-white">{{ session.get('admin_email', 'Admin').split('@')[0] }}</div>
+                            <div class="text-xs text-amber-400 uppercase font-bold tracking-wider">Administrator</div>
+                        </div>
+                        <a href="{{ url_for('admin.admin_logout') }}" onclick="return confirm('Logout from admin panel?')" class="bg-red-600/20 hover:bg-red-600/40 text-red-400 p-2 rounded-lg transition-colors">
+                            <i data-lucide="log-out" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Scroll Area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface-950 p-4 sm:p-6 lg:p-8 scroll-smooth">
+                
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                {% for category, message in messages %}
+                                    window.showToast("{{ message | replace('"', '\\"') }}", "{{ category }}");
+                                {% endfor %}
+                            });
+                        </script>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+        
+        <!-- Overlay for Mobile Sidebar -->
+        <div x-show="sidebarOpen" 
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+             @click="sidebarOpen = false"
+             x-cloak></div>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
+
+    <!-- Toast Script -->
+    <script>
+        window.showToast = function(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-900 border-green-500' : 
+                           type === 'error' ? 'bg-red-900 border-red-500' : 
+                           'bg-blue-900 border-blue-500';
+            const textColor = type === 'success' ? 'text-green-100' : 
+                             type === 'error' ? 'text-red-100' : 
+                             'text-blue-100';
+            
+            toast.className = `transform transition-all duration-300 ease-out translate-y-10 opacity-0 pointer-events-auto flex items-center w-full max-w-sm p-4 rounded-lg shadow-lg border ${bgColor} ${textColor}`;
+            
+            toast.innerHTML = `
+                <div class="flex-1 text-sm font-medium">${message}</div>
+                <button onclick="this.parentElement.remove()" class="ml-3 text-gray-400 hover:text-white focus:outline-none">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+            requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        };
+    </script>
+</body>
+</html>
+

@@ -18,7 +18,7 @@
       "purpose": "any"
     },
     {
-      "src": "/static/icons/icon-192x192.svg",
+      "src": "/static/icons/icon-512x512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
