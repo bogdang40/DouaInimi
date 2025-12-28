@@ -6,30 +6,39 @@
 **Target:** Romanian Christians in USA & Canada  
 **Scale:** ~1000 users  
 **Stack:** Flask + SQLite (dev) / PostgreSQL (prod) + Azure  
+**Domain:** 2inimi.com (Cloudflare)  
 **GitHub:** https://github.com/bogdang40/DouaInimi.git
 
 ---
 
 ## 🚀 DEPLOYMENT STATUS
 
-### Azure Infrastructure ✅ Created
+### Azure Infrastructure ✅ Complete
 
 | Service | Name | Region | Tier | Cost/Month | Status |
 |---------|------|--------|------|------------|--------|
 | **App Service** | douainimi | East US 2 | Basic B1 | ~$12 | ✅ Created |
 | **PostgreSQL** | douainimi-db | Canada Central | Burstable B1ms | ~$17 | ✅ Created |
-| **Total** | | | | **~$29/month** | |
+| **Blob Storage** | douainimiphotos | East US | Standard LRS | ~$2 | ✅ Created |
+| **Domain** | 2inimi.com | Cloudflare | - | ~$1 | ✅ Purchased |
+| **Email** | SendGrid | - | Free (100/day) | $0 | ✅ Configured |
+| **Total** | | | | **~$32/month** | |
 
-### App Service Environment Variables ✅ Configured
+### App Service Environment Variables ✅ All Configured
 
-| Variable | Status |
-|----------|--------|
-| `DATABASE_URL` | ✅ Set |
-| `SECRET_KEY` | ✅ Set |
-| `FLASK_ENV` | ✅ Set to `production` |
+| Variable | Value | Status |
+|----------|-------|--------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ Set |
+| `SECRET_KEY` | Random 64-char hex | ✅ Set |
+| `FLASK_ENV` | `production` | ✅ Set |
+| `AZURE_STORAGE_CONNECTION_STRING` | Blob storage connection | ✅ Set |
+| `AZURE_STORAGE_CONTAINER` | `photos` | ✅ Set |
+| `SENDGRID_API_KEY` | `SG.xxxxx...` | ✅ Set |
+| `MAIL_FROM` | `noreply@2inimi.com` | ✅ Set |
 
-### Database Connection
+### Service Details
 
+**Database:**
 ```
 Host: douainimi-db.postgres.database.azure.com
 Database: postgres
@@ -37,22 +46,101 @@ Username: douainimiadmin
 Port: 5432
 ```
 
-### ⏳ Deployment Next Steps
+**Blob Storage:**
+```
+Account: douainimiphotos
+Container: photos
+URL: https://douainimiphotos.blob.core.windows.net/photos/
+```
 
-| Step | Status | Action |
-|------|--------|--------|
-| 1. Push code to GitHub | ⏳ Pending | Run `git push -u origin main` from terminal |
-| 2. Connect Azure to GitHub | ⏳ Pending | Deployment Center → GitHub |
-| 3. Set startup command | ⏳ Pending | See below |
-| 4. Run database migrations | ⏳ Pending | SSH into App Service |
-| 5. Test live site | ⏳ Pending | Visit `douainimi.azurewebsites.net` |
+**Email:**
+```
+Provider: SendGrid (Free tier - 100 emails/day)
+From: noreply@2inimi.com
+Routing: Cloudflare Email Routing → Your Gmail
+```
 
-### Startup Command (Add to App Service)
+**Domain:**
+```
+Domain: 2inimi.com
+Registrar: Cloudflare
+SSL: Cloudflare (free)
+```
 
-In Azure App Service → Configuration → General settings → Startup Command:
+### ⏳ WHAT'S NEXT - Final Deployment Steps
+
+| # | Step | Status | How To |
+|---|------|--------|--------|
+| 1 | **Push code to GitHub** | ⏳ DO NOW | `git push -u origin main` (from terminal) |
+| 2 | **Connect Azure to GitHub** | ⏳ Pending | App Service → Deployment Center → GitHub |
+| 3 | **Set startup command** | ⏳ Pending | App Service → Configuration → General settings |
+| 4 | **Run database migrations** | ⏳ Pending | App Service → SSH → `flask db upgrade` |
+| 5 | **Connect domain** | ⏳ Pending | App Service → Custom domains + Cloudflare DNS |
+| 6 | **Test live site** | ⏳ Pending | Visit https://2inimi.com |
+
+---
+
+## 📋 DETAILED NEXT STEPS
+
+### Step 1: Push Code to GitHub
+```bash
+cd /Users/yztpp8/Desktop/Personal/Dating
+git push -u origin main
+```
+Use your GitHub credentials (bogdang40) when prompted.
+
+### Step 2: Connect Azure to GitHub
+1. App Service → **Deployment Center** (left menu)
+2. Source: **GitHub**
+3. Sign in and authorize
+4. Organization: `bogdang40`
+5. Repository: `DouaInimi`
+6. Branch: `main`
+7. Click **Save**
+
+Azure will auto-deploy whenever you push to GitHub!
+
+### Step 3: Set Startup Command
+1. App Service → **Configuration** → **General settings** tab
+2. Startup Command:
 ```bash
 gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
 ```
+3. Click **Save**
+
+### Step 4: Run Database Migrations
+After first deployment completes:
+1. App Service → **SSH** (under Development Tools)
+2. Run:
+```bash
+cd /home/site/wwwroot
+pip install -r requirements.txt
+flask db upgrade
+```
+
+### Step 5: Connect Domain (2inimi.com)
+**In Azure:**
+1. App Service → **Custom domains**
+2. Click **+ Add custom domain**
+3. Domain: `2inimi.com`
+4. Copy the verification TXT record value
+
+**In Cloudflare DNS:**
+| Type | Name | Content |
+|------|------|---------|
+| TXT | `asuid` | (paste Azure verification code) |
+| CNAME | `@` | `douainimi.azurewebsites.net` |
+| CNAME | `www` | `douainimi.azurewebsites.net` |
+
+5. Back in Azure → Validate → Add
+
+### Step 6: Test Everything!
+- [ ] Visit https://2inimi.com
+- [ ] Register a new account
+- [ ] Check email verification arrives
+- [ ] Complete profile
+- [ ] Upload a photo
+- [ ] Test messaging
 
 ---
 
@@ -315,19 +403,21 @@ dating-app/
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Azure App Service setup | 🔴 High | ✅ Created (Basic B1, Linux) |
-| Azure PostgreSQL setup | 🔴 High | ✅ Created (Burstable B1ms) |
-| App Service Config | 🔴 High | ✅ Environment variables set |
+| Azure App Service setup | 🔴 High | ✅ Complete (Basic B1, Linux, East US 2) |
+| Azure PostgreSQL setup | 🔴 High | ✅ Complete (Burstable B1ms, Canada Central) |
+| Azure Blob Storage setup | 🔴 High | ✅ Complete (douainimiphotos, photos container) |
+| App Service Config | 🔴 High | ✅ Complete (all 7 env vars set) |
+| Domain purchased | 🔴 High | ✅ Complete (2inimi.com on Cloudflare) |
+| SendGrid email setup | 🔴 High | ✅ Complete (API key + sender verified) |
 | GitHub Repository | 🔴 High | ✅ Code committed, ready to push |
+| Push to GitHub | 🔴 High | ⏳ **DO NOW** |
 | Connect Azure ↔ GitHub | 🔴 High | ⏳ Pending |
-| Run DB Migrations | 🔴 High | ⏳ Pending (after deployment) |
-| Azure Blob Storage setup | 🟡 Medium | ⏳ Pending (photos work locally for now) |
-| Custom domain + SSL | 🟡 Medium | ⏳ Pending |
-| SendGrid email setup | 🟡 Medium | ⏳ Pending (needs domain) |
-| reCAPTCHA Keys | 🟢 Low | ⏳ Pending (optional) |
-| GitHub Actions CI/CD | 🟢 Low | ⏳ Pending |
-| Sentry error monitoring | 🟢 Low | ⏳ Pending |
-| Azure CDN for images | 🟢 Low | ⏳ Pending |
+| Set Startup Command | 🔴 High | ⏳ Pending |
+| Run DB Migrations | 🔴 High | ⏳ Pending |
+| Connect domain to Azure | 🟡 Medium | ⏳ Pending |
+| reCAPTCHA Keys | 🟢 Low | ⏳ Optional |
+| Sentry error monitoring | 🟢 Low | ⏳ Optional |
+| Azure CDN for images | 🟢 Low | ⏳ Optional |
 
 ### Security Enhancements
 
@@ -485,11 +575,39 @@ AZURE_STORAGE_CONTAINER=photos
 |---------|------|-------------|
 | App Service | Basic B1 (1 core, 1.75GB) | **$12.41/month** |
 | PostgreSQL | Burstable B1ms (1 vCore, 2GB RAM, 32GB) | **$17.56/month** |
-| Blob Storage | (Not yet set up) | ~$2/month |
+| Blob Storage | Standard LRS | ~$2/month |
 | SendGrid | Free tier (100 emails/day) | $0 |
-| Domain | (Not yet purchased) | ~$1/month |
-| **Current Total** | | **$29.97/month** |
-| **With all services** | | **~$33/month** |
+| Domain | 2inimi.com (Cloudflare) | ~$10/year |
+| **Current Total** | | **~$32/month** |
+
+---
+
+## 🌐 Domain Setup (2inimi.com)
+
+### Connect Domain to Azure App Service
+
+1. **In Azure App Service** → Custom domains
+2. Click **+ Add custom domain**
+3. Enter: `2inimi.com` and `www.2inimi.com`
+4. Azure will show you DNS records to add
+
+### Add DNS Records in Cloudflare
+
+1. Go to Cloudflare → DNS
+2. Add these records:
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| CNAME | `@` | `douainimi.azurewebsites.net` | Proxied (orange) |
+| CNAME | `www` | `douainimi.azurewebsites.net` | Proxied (orange) |
+| TXT | `asuid` | (Azure verification code) | DNS only |
+
+3. Wait ~5 minutes for propagation
+4. Validate in Azure
+
+### SSL Certificate
+- Cloudflare provides **free SSL** when proxy is enabled
+- Azure also has free managed certificates for custom domains
 
 ---
 
@@ -654,12 +772,14 @@ flask db upgrade
 #### Step 5: Test Live Site
 - Visit: `https://douainimi.azurewebsites.net`
 
-### 🔮 FUTURE ENHANCEMENTS
-- [ ] Buy domain (douainimi.com) - ~$12/year
-- [ ] Configure SendGrid for emails
-- [ ] Add reCAPTCHA keys
-- [ ] Set up Azure Blob Storage for photos
-- [ ] Add Sentry for error monitoring
+### 🔮 FUTURE ENHANCEMENTS (After Launch)
+- [ ] Add reCAPTCHA keys (bot protection)
+- [ ] Add Sentry (error monitoring)
+- [ ] Azure CDN for faster image loading
+- [ ] Profile Boost (premium feature)
+- [ ] Stripe payments integration
+- [ ] Push notifications (web push)
+- [ ] Mobile app (Capacitor build)
 
 ---
 
@@ -730,8 +850,10 @@ git push origin main
 ```
 
 ### Azure Resources
-- **App Service:** douainimi.azurewebsites.net
+- **Live URL:** https://2inimi.com (after domain setup)
+- **Azure URL:** douainimi.azurewebsites.net
 - **PostgreSQL:** douainimi-db.postgres.database.azure.com
+- **Blob Storage:** douainimiphotos.blob.core.windows.net (after setup)
 - **Resource Group:** DouaInimi
 - **Region:** East US 2 (App), Canada Central (DB)
 
