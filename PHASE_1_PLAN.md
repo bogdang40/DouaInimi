@@ -7,7 +7,8 @@
 **Scale:** ~1000 users  
 **Stack:** Flask + SQLite (dev) / PostgreSQL (prod) + Azure  
 **Domain:** 2inimi.com (Cloudflare)  
-**GitHub:** https://github.com/bogdang40/DouaInimi.git
+**GitHub:** https://github.com/bogdang40/DouaInimi.git  
+**Last Deploy:** December 28, 2025
 
 ---
 
