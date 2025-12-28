@@ -1,4 +1,5 @@
 """Match routes."""
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
@@ -12,24 +13,35 @@ matches_bp = Blueprint('matches', __name__)
 @matches_bp.route('/')
 @login_required
 def list():
-    """List all matches."""
+    """List all matches - Tinder style."""
     matches = Match.get_user_matches(current_user.id)
     
-    # Prepare match data with other user info
-    match_data = []
-    for match in matches:
-        other_user = match.get_other_user(current_user.id)
-        last_message = match.last_message
-        unread = match.unread_count(current_user.id)
-        
-        match_data.append({
-            'match': match,
-            'user': other_user,
-            'last_message': last_message,
-            'unread_count': unread,
-        })
+    # Separate new matches (no messages) from conversations
+    new_matches = []
+    conversations = []
     
-    return render_template('matches/list.html', matches=match_data)
+    for match in matches:
+        if match.last_message is None:
+            new_matches.append(match)
+        else:
+            conversations.append(match)
+    
+    # Sort conversations by last message time (most recent first)
+    conversations.sort(key=lambda m: m.last_message.created_at if m.last_message else m.created_at, reverse=True)
+    
+    # Get pending likes (people who liked you but you haven't liked back)
+    pending_likes = Like.query.filter(
+        Like.liked_id == current_user.id,
+        ~Like.liker_id.in_(
+            db.session.query(Like.liked_id).filter(Like.liker_id == current_user.id)
+        )
+    ).order_by(Like.created_at.desc()).all()
+    
+    return render_template('matches/list.html', 
+                          matches=conversations,
+                          new_matches=new_matches,
+                          pending_likes=pending_likes,
+                          now=datetime.utcnow())
 
 
 @matches_bp.route('/<int:match_id>/unmatch', methods=['POST'])

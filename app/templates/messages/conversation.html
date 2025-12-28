@@ -2,9 +2,9 @@
 
 {% block title %}Chat with {{ other_user.display_name }} - {{ app_name }}{% endblock %}
 
-{% block main_class %}h-[calc(100vh-64px)] overflow-hidden{% endblock %}
+{% block main_class %}h-[100dvh] md:h-[calc(100vh-64px)] overflow-hidden{% endblock %}
 
-{% block footer %}{% endblock %}
+{% block footer %}{% endblock %} {# No footer in chat #}
 
 {% block extra_css %}
 <style>
@@ -15,8 +15,12 @@
     .typing-dots .dot-2 { animation: typing-dot-2 1s infinite; }
     .typing-dots .dot-3 { animation: typing-dot-3 1s infinite; }
     
-    /* Mobile-specific chat optimizations */
+    /* Hide mobile nav in conversation view (need more space) */
     @media (max-width: 768px) {
+        nav .fixed.bottom-0 {
+            display: none !important;
+        }
+        
         /* Better touch scrolling */
         #messages-container {
             -webkit-overflow-scrolling: touch;
@@ -30,7 +34,7 @@
         
         /* Safe area padding for message input */
         .message-input-wrapper {
-            padding-bottom: env(safe-area-inset-bottom, 0);
+            padding-bottom: max(env(safe-area-inset-bottom, 8px), 8px);
         }
     }
     

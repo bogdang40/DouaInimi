@@ -1,6 +1,7 @@
 """Main routes - landing page and dashboard."""
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, send_from_directory, current_app
 from flask_login import login_required, current_user
+import os
 
 main_bp = Blueprint('main', __name__)
 
@@ -16,7 +17,7 @@ def index():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    """Main dashboard after login."""
+    """Main dashboard - redirects to swipe for Tinder-like UX."""
     # Update last active time
     current_user.update_last_active()
     
@@ -24,7 +25,14 @@ def dashboard():
     if not current_user.profile or not current_user.profile.is_complete:
         return redirect(url_for('profile.edit'))
     
-    # Get some stats for dashboard
+    # Tinder-style UX: Go straight to swiping!
+    return redirect(url_for('discover.swipe'))
+
+
+@main_bp.route('/stats')
+@login_required
+def stats():
+    """User stats page (moved from dashboard)."""
     from app.models.match import Match, Like
     from app.models.message import Message
     
@@ -67,4 +75,17 @@ def privacy():
 def offline():
     """Offline fallback page for PWA."""
     return render_template('main/offline.html')
+
+
+@main_bp.route('/sw.js')
+def service_worker():
+    """Serve service worker from root with proper scope header."""
+    response = send_from_directory(
+        os.path.join(current_app.root_path, 'static'),
+        'sw.js',
+        mimetype='application/javascript'
+    )
+    response.headers['Service-Worker-Allowed'] = '/'
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 

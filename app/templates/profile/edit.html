@@ -4,6 +4,8 @@
 
 {% block main_class %}pb-20 md:pb-0{% endblock %}
 
+{% block footer %}{% endblock %}
+
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
     <div class="mb-8">
@@ -210,8 +212,27 @@
                         {{ form.education(class="w-full px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Height (cm)</label>
-                        {{ form.height_cm(class="w-full px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent", placeholder="e.g., 175") }}
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Height</label>
+                        <!-- Toggle between cm and ft/in -->
+                        <div x-data="{ useMetric: {{ 'true' if not current_user.profile or not current_user.profile.height_cm or current_user.profile.height_cm else 'false' }} }" class="space-y-2">
+                            <div class="flex space-x-2 text-sm">
+                                <button type="button" @click="useMetric = false" 
+                                        :class="!useMetric ? 'bg-amber-500 text-white' : 'bg-surface-100 dark:bg-white/5 text-surface-600 dark:text-gray-400'"
+                                        class="px-3 py-1 rounded-lg transition">ft/in</button>
+                                <button type="button" @click="useMetric = true"
+                                        :class="useMetric ? 'bg-amber-500 text-white' : 'bg-surface-100 dark:bg-white/5 text-surface-600 dark:text-gray-400'"
+                                        class="px-3 py-1 rounded-lg transition">cm</button>
+                            </div>
+                            <!-- Metric input -->
+                            <div x-show="useMetric">
+                                {{ form.height_cm(class="w-full px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent", placeholder="e.g., 175") }}
+                            </div>
+                            <!-- Imperial input -->
+                            <div x-show="!useMetric" class="flex space-x-2">
+                                {{ form.height_ft(class="w-1/2 px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                                {{ form.height_in(class="w-1/2 px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -257,16 +278,11 @@
             
             <div class="grid md:grid-cols-2 gap-5">
                 <div>
-                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Looking For *</label>
-                    {{ form.looking_for_gender(class="w-full px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
-                    {% if form.looking_for_gender.errors %}<p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ form.looking_for_gender.errors[0] }}</p>{% endif %}
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Relationship Goal</label>
                     {{ form.relationship_goal(class="w-full px-4 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Age Range</label>
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">Age Range Preference</label>
                     <div class="flex items-center space-x-3">
                         {{ form.looking_for_age_min(class="w-20 px-3 py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent text-center") }}
                         <span class="text-surface-500">to</span>
@@ -274,6 +290,8 @@
                     </div>
                 </div>
             </div>
+            <!-- Hidden field for looking_for_gender - will be auto-set based on user gender -->
+            {{ form.looking_for_gender(type="hidden") }}
         </div>
         
         <!-- Submit -->

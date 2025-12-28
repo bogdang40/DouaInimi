@@ -4,100 +4,178 @@
 
 {% block main_class %}pb-20 md:pb-0{% endblock %}
 
+{% block footer %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .match-card {
+        scroll-snap-align: start;
+    }
+    .matches-scroll {
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
+    .matches-scroll::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
-    <div class="mb-8">
-        <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Your Matches</h1>
-        <p class="mt-1 text-surface-600 dark:text-gray-400">People who like you back 💕</p>
-    </div>
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-surface-50 dark:bg-transparent min-h-screen">
     
-    {% if matches %}
-    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {% for match in matches %}
-        {% set other_user = match.get_other_user(current_user.id) %}
-        <a href="{{ url_for('messages.conversation', match_id=match.id) }}" 
-           class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden hover:shadow-lg dark:hover:bg-white/10 transition group">
-            <div class="aspect-square relative overflow-hidden">
-                <img src="{{ other_user.primary_photo_url }}" 
-                     alt="{{ other_user.display_name }}"
-                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-                
-                <!-- Unread badge -->
-                {% set unread = match.unread_count(current_user.id) %}
-                {% if unread > 0 %}
-                <div class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                    {{ unread if unread < 10 else '9+' }}
-                </div>
-                {% endif %}
-                
-                <!-- Name overlay -->
-                <div class="absolute bottom-0 left-0 right-0 p-3">
-                    <h3 class="font-semibold text-white truncate">{{ other_user.display_name }}</h3>
-                    {% if other_user.profile %}
-                    <p class="text-xs text-white/80">{{ other_user.profile.city }}</p>
+    {% if matches or pending_likes %}
+    
+    <!-- New Matches - Horizontal Scroll (Tinder-style) -->
+    {% if new_matches %}
+    <div class="mb-6">
+        <h2 class="text-xs font-semibold text-surface-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
+            New Matches
+        </h2>
+        <div class="matches-scroll flex space-x-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {% for match in new_matches %}
+            {% set other_user = match.get_other_user(current_user.id) %}
+            <a href="{{ url_for('messages.conversation', match_id=match.id) }}" 
+               class="match-card flex-shrink-0 text-center group">
+                <div class="relative">
+                    <div class="w-20 h-20 rounded-full overflow-hidden ring-2 ring-amber-400 dark:ring-amber-500 p-0.5 bg-gradient-to-br from-amber-400 to-rose-500">
+                        <img src="{{ other_user.primary_photo_url }}" 
+                             alt="{{ other_user.display_name }}"
+                             class="w-full h-full object-cover rounded-full">
+                    </div>
+                    {% if other_user.is_online %}
+                    <span class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-surface-900"></span>
                     {% endif %}
                 </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-    
-    {% else %}
-    <!-- Empty State -->
-    <div class="text-center py-16 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl">
-        <div class="w-20 h-20 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <i data-lucide="heart" class="w-10 h-10 text-red-600 dark:text-red-400"></i>
+                <p class="mt-2 text-xs text-surface-700 dark:text-gray-300 truncate w-20 group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                    {{ other_user.display_name.split()[0] }}
+                </p>
+            </a>
+            {% endfor %}
         </div>
-        <h3 class="font-display text-2xl font-semibold text-surface-900 dark:text-white mb-2">No Matches Yet</h3>
-        <p class="text-surface-600 dark:text-gray-400 max-w-md mx-auto mb-6">
-            When you and another person both like each other, you'll see them here. Keep exploring!
-        </p>
-        <a href="{{ url_for('discover.browse') }}" 
-           class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full hover:from-amber-400 hover:to-amber-500 transition">
-            <i data-lucide="compass" class="w-4 h-4 mr-2"></i>
-            Discover People
-        </a>
     </div>
     {% endif %}
     
-    <!-- Pending Likes Section -->
+    <!-- Pending Likes (Blurred) -->
     {% if pending_likes %}
-    <div class="mt-12">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="font-display text-xl font-semibold text-surface-900 dark:text-white">
-                People Who Liked You <span class="text-red-600 dark:text-red-400">({{ pending_likes|length }})</span>
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-3 px-1">
+            <h2 class="text-xs font-semibold text-surface-500 dark:text-gray-400 uppercase tracking-wider">
+                <span class="text-amber-600 dark:text-amber-400">{{ pending_likes|length }}</span> Likes You
             </h2>
+            <span class="text-xs text-surface-400">Swipe to reveal</span>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {% for like in pending_likes[:8] %}
+        <div class="matches-scroll flex space-x-3 overflow-x-auto pb-2 -mx-4 px-4">
+            {% for like in pending_likes[:10] %}
             {% set liker = like.liker %}
-            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden">
-                <div class="aspect-square relative overflow-hidden">
-                    <img src="{{ liker.primary_photo_url }}" 
-                         alt="{{ liker.display_name }}"
-                         class="w-full h-full object-cover blur-md">
-                    <div class="absolute inset-0 bg-surface-900/40 dark:bg-surface-950/60 flex items-center justify-center">
-                        <i data-lucide="heart" class="w-10 h-10 text-red-500"></i>
+            <div class="match-card flex-shrink-0 text-center">
+                <div class="relative cursor-pointer group" onclick="window.location.href='{{ url_for('discover.swipe') }}'">
+                    <div class="w-20 h-20 rounded-full overflow-hidden ring-2 ring-rose-400/50 dark:ring-rose-500/50 p-0.5 bg-gradient-to-br from-rose-400 to-purple-500">
+                        <img src="{{ liker.primary_photo_url }}" 
+                             alt="Someone"
+                             class="w-full h-full object-cover rounded-full blur-md group-hover:blur-sm transition-all">
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <i data-lucide="heart" class="w-8 h-8 text-white drop-shadow-lg"></i>
                     </div>
                 </div>
-                <div class="p-3 flex space-x-2">
-                    <form action="{{ url_for('discover.pass_user', user_id=liker.id) }}" method="POST" class="flex-1">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="w-full py-2 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-lg text-surface-500 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 text-sm">
-                            <i data-lucide="x" class="w-4 h-4 mx-auto"></i>
-                        </button>
-                    </form>
-                    <form action="{{ url_for('discover.like_user', user_id=liker.id) }}" method="POST" class="flex-1">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="w-full py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm">
-                            <i data-lucide="heart" class="w-4 h-4 mx-auto"></i>
-                        </button>
-                    </form>
-                </div>
+                <p class="mt-2 text-xs text-surface-400 dark:text-gray-500 w-20">
+                    {% if like.is_super_like %}⭐ Super{% else %}Liked you{% endif %}
+                </p>
             </div>
             {% endfor %}
         </div>
+    </div>
+    {% endif %}
+    
+    <!-- Messages Section -->
+    <div class="mb-4 flex items-center justify-between px-1">
+        <h2 class="text-xs font-semibold text-surface-500 dark:text-gray-400 uppercase tracking-wider">
+            Messages
+        </h2>
+        <a href="{{ url_for('messages.inbox') }}" class="text-xs text-amber-600 dark:text-amber-400 hover:underline">
+            See All
+        </a>
+    </div>
+    
+    {% if matches %}
+    <div class="space-y-1 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden">
+        {% for match in matches %}
+        {% set other_user = match.get_other_user(current_user.id) %}
+        <a href="{{ url_for('messages.conversation', match_id=match.id) }}" 
+           class="flex items-center p-4 hover:bg-surface-50 dark:hover:bg-white/5 transition border-b border-surface-100 dark:border-white/5 last:border-0">
+            <!-- Photo with online indicator -->
+            <div class="relative flex-shrink-0">
+                <img src="{{ other_user.primary_photo_url }}" 
+                     alt="{{ other_user.display_name }}"
+                     class="w-14 h-14 rounded-full object-cover ring-2 ring-surface-200 dark:ring-white/10">
+                {% if other_user.is_online %}
+                <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white dark:border-surface-900"></span>
+                {% endif %}
+            </div>
+            
+            <!-- Message preview -->
+            <div class="ml-4 flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-surface-900 dark:text-white truncate">
+                        {{ other_user.display_name }}
+                    </h3>
+                    {% if match.last_message %}
+                    <span class="text-xs text-surface-400 dark:text-gray-500 flex-shrink-0 ml-2">
+                        {{ match.last_message.created_at.strftime('%I:%M %p') if match.last_message.created_at.date() == now.date() else match.last_message.created_at.strftime('%b %d') }}
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-sm text-surface-500 dark:text-gray-400 truncate">
+                    {% if match.last_message %}
+                        {% if match.last_message.sender_id == current_user.id %}
+                        <span class="text-surface-400">You: </span>
+                        {% endif %}
+                        {{ match.last_message.content[:40] }}{% if match.last_message.content|length > 40 %}...{% endif %}
+                    {% else %}
+                        <span class="text-amber-600 dark:text-amber-400">Say hello! 👋</span>
+                    {% endif %}
+                </p>
+            </div>
+            
+            <!-- Unread badge -->
+            {% set unread = match.unread_count(current_user.id) %}
+            {% if unread > 0 %}
+            <div class="ml-3 w-6 h-6 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                {{ unread if unread < 10 else '9+' }}
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- No conversations yet -->
+    <div class="text-center py-12 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl">
+        <div class="w-16 h-16 bg-surface-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="message-circle" class="w-8 h-8 text-surface-400 dark:text-gray-500"></i>
+        </div>
+        <h3 class="font-medium text-surface-700 dark:text-gray-300 mb-1">No Conversations Yet</h3>
+        <p class="text-sm text-surface-500 dark:text-gray-400">
+            Start chatting with your matches above!
+        </p>
+    </div>
+    {% endif %}
+    
+    {% else %}
+    <!-- Empty State - No Matches at All -->
+    <div class="text-center py-16 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl">
+        <div class="w-24 h-24 bg-gradient-to-br from-amber-100 to-rose-100 dark:from-amber-500/20 dark:to-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i data-lucide="heart" class="w-12 h-12 text-amber-600 dark:text-amber-400"></i>
+        </div>
+        <h3 class="font-display text-2xl font-semibold text-surface-900 dark:text-white mb-2">No Matches Yet</h3>
+        <p class="text-surface-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+            When you and another person both like each other, they'll appear here. Start swiping to find your match!
+        </p>
+        <a href="{{ url_for('discover.swipe') }}" 
+           class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-full hover:from-amber-400 hover:to-rose-400 transition font-medium">
+            <i data-lucide="flame" class="w-5 h-5 mr-2"></i>
+            Start Swiping
+        </a>
     </div>
     {% endif %}
 </div>

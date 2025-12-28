@@ -2,7 +2,9 @@
 
 {% block title %}Discover - {{ app_name }}{% endblock %}
 
-{% block main_class %}pb-20 md:pb-0{% endblock %}
+{% block main_class %}{% endblock %}
+
+{% block footer %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -24,134 +26,263 @@
     .animate-heart {
         animation: pulse-heart 0.3s ease;
     }
+    @keyframes bounce-up {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+    .swipe-hint {
+        animation: bounce-up 1.5s ease-in-out infinite;
+    }
+    
+    /* Full height cards on mobile */
+    @media (max-width: 640px) {
+        .card-stack-container {
+            height: calc(100vh - 180px);
+            min-height: 500px;
+        }
+    }
+    
+    /* Prevent body scroll when modal open */
+    body.modal-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="min-h-[calc(100vh-64px)] bg-surface-50 dark:bg-surface-950 flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="font-display text-2xl font-bold text-surface-900 dark:text-white">Discover</h1>
-            <div class="flex space-x-2">
-                <a href="{{ url_for('discover.browse') }}" 
-                   class="p-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-lg text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10"
-                   title="Grid View">
-                    <i data-lucide="grid" class="w-5 h-5"></i>
-                </a>
-                <a href="{{ url_for('discover.search') }}" 
-                   class="p-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-lg text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10"
-                   title="Filters">
-                    <i data-lucide="sliders" class="w-5 h-5"></i>
-                </a>
-            </div>
+<div class="fixed inset-0 top-16 bg-surface-50 dark:bg-surface-950 flex flex-col overflow-hidden">
+    <!-- Safe area for mobile bottom nav -->
+    <div class="w-full max-w-md mx-auto flex-1 flex flex-col p-4 pb-4 overflow-hidden">
+        <!-- Minimal Header - Tinder style -->
+        <div class="flex items-center justify-between mb-4">
+            <a href="{{ url_for('discover.search') }}" 
+               class="p-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-full text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10 transition"
+               title="Filters">
+                <i data-lucide="sliders" class="w-5 h-5"></i>
+            </a>
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="{{ app_name }}" class="h-8 w-auto">
+            <a href="{{ url_for('discover.browse') }}" 
+               class="p-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-full text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10 transition"
+               title="Grid View">
+                <i data-lucide="grid" class="w-5 h-5"></i>
+            </a>
         </div>
         
         {% if users %}
-        <!-- Card Stack -->
-        <div id="card-stack" class="relative h-[500px] sm:h-[550px]">
+        <!-- Card Stack - Full height on mobile -->
+        <div id="card-stack" class="card-stack-container relative flex-1 min-h-[480px] sm:h-[520px]">
             {% for user in users %}
             {% set profile = user.profile %}
             <div class="swipe-card absolute inset-0 bg-white dark:bg-surface-800 rounded-3xl shadow-2xl overflow-hidden border border-surface-200 dark:border-white/10"
                  data-user-id="{{ user.id }}"
                  style="z-index: {{ loop.revindex }}; {% if not loop.first %}display: none;{% endif %}">
                 
-                <!-- Photo -->
-                <div class="relative h-[65%]">
-                    <img src="{{ user.primary_photo_url }}" 
-                         alt="{{ user.display_name }}"
-                         class="w-full h-full object-cover">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                <!-- Photo Carousel - Takes most of the card -->
+                <div class="relative h-[75%] photo-carousel" data-photo-index="0">
+                    <!-- Photo container -->
+                    <div class="photo-slides w-full h-full">
+                        {% set photos = user.photos if user.photos else [] %}
+                        {% if photos %}
+                            {% for photo in photos[:6] %}
+                            <img src="{{ photo.url }}" 
+                                 alt="{{ user.display_name }}"
+                                 class="photo-slide absolute inset-0 w-full h-full object-cover transition-opacity duration-300 {% if loop.first %}opacity-100{% else %}opacity-0{% endif %}"
+                                 data-index="{{ loop.index0 }}">
+                            {% endfor %}
+                        {% else %}
+                            <img src="{{ user.primary_photo_url }}" 
+                                 alt="{{ user.display_name }}"
+                                 class="w-full h-full object-cover">
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Photo navigation dots -->
+                    {% if photos|length > 1 %}
+                    <div class="absolute top-3 left-0 right-0 flex justify-center space-x-1.5 z-20 px-4">
+                        {% for photo in photos[:6] %}
+                        <div class="photo-dot flex-1 h-1 rounded-full transition-all {% if loop.first %}bg-white{% else %}bg-white/40{% endif %}" 
+                             data-index="{{ loop.index0 }}"></div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Tap zones for photo navigation - higher z-index, prevent all propagation -->
+                    <div class="absolute inset-0 flex z-30 pointer-events-none">
+                        <div class="photo-prev w-2/5 h-full pointer-events-auto" 
+                             ontouchstart="event.stopPropagation();" 
+                             ontouchend="event.stopPropagation(); prevPhoto(this); return false;"
+                             onclick="event.stopPropagation(); event.preventDefault(); prevPhoto(this); return false;"></div>
+                        <div class="w-1/5 h-full"></div>
+                        <div class="photo-next w-2/5 h-full pointer-events-auto" 
+                             ontouchstart="event.stopPropagation();" 
+                             ontouchend="event.stopPropagation(); nextPhoto(this); return false;"
+                             onclick="event.stopPropagation(); event.preventDefault(); nextPhoto(this); return false;"></div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
                     
                     <!-- Like/Nope overlays -->
-                    <div class="like-overlay absolute inset-0 bg-green-500/20 flex items-center justify-center opacity-0 transition-opacity">
-                        <span class="text-6xl">💚</span>
+                    <div class="like-overlay absolute inset-0 bg-green-500/30 flex items-center justify-center opacity-0 transition-opacity pointer-events-none">
+                        <span class="text-8xl transform rotate-[-15deg] border-8 border-green-500 text-green-500 font-black px-4 py-2 rounded-lg">LIKE</span>
                     </div>
-                    <div class="nope-overlay absolute inset-0 bg-red-500/20 flex items-center justify-center opacity-0 transition-opacity">
-                        <span class="text-6xl">❌</span>
+                    <div class="nope-overlay absolute inset-0 bg-red-500/30 flex items-center justify-center opacity-0 transition-opacity pointer-events-none">
+                        <span class="text-8xl transform rotate-[15deg] border-8 border-red-500 text-red-500 font-black px-4 py-2 rounded-lg">NOPE</span>
                     </div>
                     
-                    <!-- Info overlay -->
-                    <div class="absolute bottom-0 left-0 right-0 p-6">
-                        <h2 class="font-display text-3xl font-bold text-white">
-                            {{ user.display_name }}{% if profile and profile.age %}, {{ profile.age }}{% endif %}
-                        </h2>
-                        {% if profile %}
-                        <p class="text-white/80 flex items-center mt-1">
-                            <i data-lucide="map-pin" class="w-4 h-4 mr-1"></i>
-                            {{ profile.city }}{% if profile.state_province %}, {{ profile.state_province }}{% endif %}
-                        </p>
-                        {% endif %}
+                    <!-- Online indicator -->
+                    {% if user.is_online %}
+                    <div class="absolute top-8 right-4 flex items-center space-x-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 z-10">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span class="text-white text-xs">Online</span>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Info overlay at bottom of photo -->
+                    <div class="absolute bottom-0 left-0 right-0 p-5 z-10">
+                        <div class="flex items-end justify-between">
+                            <div>
+                                <h2 class="font-display text-3xl font-bold text-white drop-shadow-lg">
+                                    {{ user.display_name }}{% if profile and profile.age %}, {{ profile.age }}{% endif %}
+                                </h2>
+                                {% if profile %}
+                                <p class="text-white/90 flex items-center mt-1 text-sm">
+                                    <i data-lucide="map-pin" class="w-4 h-4 mr-1"></i>
+                                    {{ profile.city }}{% if profile.state_province %}, {{ profile.state_province }}{% endif %}
+                                </p>
+                                {% endif %}
+                            </div>
+                            <!-- Info button on card -->
+                            <button onclick="event.stopPropagation(); showProfileModal({{ user.id }})" 
+                                    class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition z-20">
+                                <i data-lucide="info" class="w-5 h-5"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Details -->
-                <div class="p-6">
+                <!-- Quick Info Strip -->
+                <div class="p-4 h-[25%] flex flex-col justify-between">
                     {% if profile %}
-                    <div class="flex flex-wrap gap-2 mb-4">
+                    <div class="flex flex-wrap gap-2">
                         {% if profile.denomination %}
-                        <span class="inline-flex items-center px-3 py-1 bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-full text-sm">
+                        <span class="inline-flex items-center px-3 py-1 bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-full text-xs font-medium">
                             ✝️ {{ dict(config['DENOMINATIONS']).get(profile.denomination, profile.denomination) }}
                         </span>
                         {% endif %}
                         {% if profile.speaks_romanian %}
-                        <span class="inline-flex items-center px-3 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-sm">
+                        <span class="inline-flex items-center px-3 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-xs font-medium">
                             🇷🇴 {{ profile.get_speaks_romanian_display() }}
+                        </span>
+                        {% endif %}
+                        {% if profile.relationship_goal %}
+                        <span class="inline-flex items-center px-3 py-1 bg-pink-100 dark:bg-pink-500/20 text-pink-700 dark:text-pink-400 rounded-full text-xs font-medium">
+                            💍 {{ profile.get_relationship_goal_display() }}
                         </span>
                         {% endif %}
                     </div>
                     
                     {% if profile.bio %}
-                    <p class="text-surface-600 dark:text-gray-400 text-sm line-clamp-2">
-                        {{ profile.bio[:100] }}{% if profile.bio|length > 100 %}...{% endif %}
+                    <p class="text-surface-600 dark:text-gray-400 text-sm line-clamp-2 mt-2">
+                        {{ profile.bio[:120] }}{% if profile.bio|length > 120 %}...{% endif %}
                     </p>
                     {% endif %}
                     {% endif %}
                     
-                    <a href="{{ url_for('profile.view_user', user_id=user.id) }}" 
-                       class="block text-center text-amber-600 dark:text-amber-400 text-sm mt-3 hover:underline">
-                        View Full Profile
-                    </a>
+                    <!-- Swipe up hint -->
+                    <div class="flex justify-center mt-2">
+                        <span class="swipe-hint text-surface-400 dark:text-gray-500 text-xs flex items-center">
+                            <i data-lucide="chevron-up" class="w-4 h-4 mr-1"></i>
+                            Swipe up for more
+                        </span>
+                    </div>
                 </div>
+                
+                <!-- Hidden profile data for modal -->
+                <script type="application/json" class="profile-data">
+                {
+                    "id": {{ user.id }},
+                    "name": "{{ user.display_name }}",
+                    "age": {{ profile.age if profile and profile.age else 'null' }},
+                    "city": "{{ profile.city if profile else '' }}",
+                    "state": "{{ profile.state_province if profile else '' }}",
+                    "photos": [{% for photo in user.photos[:6] %}"{{ photo.url }}"{% if not loop.last %},{% endif %}{% endfor %}],
+                    "bio": {{ profile.bio|tojson if profile and profile.bio else '""' }},
+                    "is_online": {{ 'true' if user.is_online else 'false' }},
+                    "denomination": "{{ dict(config['DENOMINATIONS']).get(profile.denomination, '') if profile and profile.denomination else '' }}",
+                    "speaks_romanian": "{{ profile.get_speaks_romanian_display() if profile and profile.speaks_romanian else '' }}",
+                    "occupation": "{{ profile.occupation if profile and profile.occupation else '' }}",
+                    "education": "{{ profile.get_education_display() if profile and profile.education else '' }}",
+                    "height": "{{ profile.height_display if profile and profile.height_cm else '' }}",
+                    "church_attendance": "{{ profile.get_church_attendance_display() if profile and profile.church_attendance else '' }}",
+                    "conservatism": "{{ profile.get_conservatism_display() if profile and profile.conservatism_level else '' }}",
+                    "wants_children": "{{ profile.get_wants_children_display() if profile and profile.wants_children else '' }}",
+                    "relationship_goal": "{{ profile.get_relationship_goal_display() if profile and profile.relationship_goal else '' }}",
+                    "romanian_region": "{{ dict(config['ROMANIAN_REGIONS']).get(profile.romanian_origin_region, '') if profile and profile.romanian_origin_region else '' }}",
+                    "prayer": "{{ profile.get_prayer_display() if profile and profile.prayer_frequency else '' }}",
+                    "fasting": "{{ profile.get_fasting_display() if profile and profile.fasting_practice else '' }}",
+                    "family_role": "{{ profile.get_family_role_display() if profile and profile.family_role_view else '' }}",
+                    "head_covering": "{{ profile.get_head_covering_display() if profile and profile.gender == 'female' and profile.head_covering else '' }}",
+                    "smoking": "{{ profile.smoking|capitalize if profile and profile.smoking else '' }}",
+                    "drinking": "{{ profile.drinking|capitalize if profile and profile.drinking else '' }}",
+                    "wants_church_wedding": {{ 'true' if profile and profile.wants_church_wedding else 'false' }},
+                    "gender": "{{ profile.gender if profile else '' }}"
+                }
+                </script>
             </div>
             {% endfor %}
         </div>
         
-        <!-- Action Buttons -->
-        <div class="flex justify-center items-center space-x-4 mt-6">
-            <button id="btn-pass" 
-                    class="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-surface-800 border-2 border-red-200 dark:border-red-500/30 rounded-full flex items-center justify-center text-red-500 shadow-lg hover:scale-110 active:scale-95 transition-transform"
-                    title="Pass">
-                <i data-lucide="x" class="w-7 h-7 sm:w-8 sm:h-8"></i>
+        <!-- Action Buttons - Tinder style -->
+        <div class="flex justify-center items-center space-x-3 mt-4">
+            <!-- Rewind (disabled - future premium) -->
+            <button id="btn-rewind" disabled
+                    class="w-11 h-11 bg-white dark:bg-surface-800 border-2 border-amber-200 dark:border-amber-500/30 rounded-full flex items-center justify-center text-amber-400 opacity-40 cursor-not-allowed"
+                    title="Rewind (Premium)">
+                <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
             </button>
+            
+            <!-- Pass -->
+            <button id="btn-pass" 
+                    class="w-14 h-14 bg-white dark:bg-surface-800 border-2 border-red-300 dark:border-red-500/40 rounded-full flex items-center justify-center text-red-500 shadow-lg hover:scale-110 active:scale-90 transition-transform"
+                    title="Pass">
+                <i data-lucide="x" class="w-8 h-8"></i>
+            </button>
+            
+            <!-- Super Like -->
             <button id="btn-super-like"
-                    class="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-transform relative"
+                    class="w-12 h-12 bg-white dark:bg-surface-800 border-2 border-blue-300 dark:border-blue-500/40 rounded-full flex items-center justify-center text-blue-500 shadow-lg hover:scale-110 active:scale-90 transition-transform relative"
                     title="Super Like ({{ super_likes_remaining }} remaining)">
-                <i data-lucide="star" class="w-6 h-6 sm:w-7 sm:h-7"></i>
-                <span id="super-like-count" class="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                <i data-lucide="star" class="w-6 h-6"></i>
+                <span id="super-like-count" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                     {{ super_likes_remaining }}
                 </span>
             </button>
+            
+            <!-- Like -->
             <button id="btn-like" 
-                    class="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 active:scale-95 transition-transform"
+                    class="w-14 h-14 bg-white dark:bg-surface-800 border-2 border-green-300 dark:border-green-500/40 rounded-full flex items-center justify-center text-green-500 shadow-lg hover:scale-110 active:scale-90 transition-transform"
                     title="Like">
-                <i data-lucide="heart" class="w-7 h-7 sm:w-8 sm:h-8"></i>
+                <i data-lucide="heart" class="w-8 h-8"></i>
+            </button>
+            
+            <!-- Boost (disabled - future premium) -->
+            <button id="btn-boost" disabled
+                    class="w-11 h-11 bg-white dark:bg-surface-800 border-2 border-purple-200 dark:border-purple-500/30 rounded-full flex items-center justify-center text-purple-400 opacity-40 cursor-not-allowed"
+                    title="Boost (Premium)">
+                <i data-lucide="zap" class="w-5 h-5"></i>
             </button>
         </div>
         
-        <!-- Info button moved below -->
-        <div class="flex justify-center mt-4">
-            <button id="btn-info"
-                    class="px-4 py-2 bg-white dark:bg-surface-800 border border-surface-200 dark:border-white/10 rounded-full flex items-center space-x-2 text-surface-500 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/5 transition text-sm">
-                <i data-lucide="info" class="w-4 h-4"></i>
-                <span>View Profile</span>
-            </button>
+        <!-- Keyboard hints (desktop only) -->
+        <div class="hidden md:flex justify-center mt-2 space-x-4 text-xs text-surface-400 dark:text-gray-500">
+            <span>← Pass</span>
+            <span>Click card for profile</span>
+            <span>→ Like</span>
         </div>
-        
-        <!-- Cards remaining -->
-        <p class="text-center text-surface-500 dark:text-gray-500 text-sm mt-4">
-            <span id="cards-remaining">{{ users|length }}</span> profiles to discover
-        </p>
+    </div>
+</div>
         
         {% else %}
         <!-- No more profiles -->
@@ -173,6 +304,120 @@
     </div>
 </div>
 
+<!-- Profile Modal (Tinder-style - full detail like profile view) -->
+<div id="profile-modal" class="fixed inset-0 bg-black z-50 hidden overflow-y-auto">
+    <div class="min-h-screen">
+        <!-- Close button -->
+        <button onclick="closeProfileModal()" 
+                class="fixed top-4 right-4 z-50 w-10 h-10 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
+            <i data-lucide="chevron-down" class="w-6 h-6"></i>
+        </button>
+        
+        <!-- Profile content -->
+        <div id="profile-modal-content" class="max-w-lg mx-auto bg-surface-900">
+            <!-- Photo Carousel -->
+            <div class="relative" id="modal-photo-carousel">
+                <div id="modal-photos-container" class="relative h-[65vh] min-h-[350px]">
+                    <!-- Photos will be inserted here by JS -->
+                </div>
+                
+                <!-- Photo dots -->
+                <div id="modal-photo-dots" class="absolute top-3 left-0 right-0 flex justify-center space-x-1.5 z-10 px-4"></div>
+                
+                <!-- Tap zones for photo navigation -->
+                <div class="absolute inset-0 flex z-5">
+                    <div class="w-1/3 h-full cursor-pointer" onclick="modalPrevPhoto()"></div>
+                    <div class="w-1/3 h-full"></div>
+                    <div class="w-1/3 h-full cursor-pointer" onclick="modalNextPhoto()"></div>
+                </div>
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+                
+                <!-- Online status -->
+                <div id="modal-online-status" class="absolute top-8 left-4 hidden z-10">
+                    <div class="flex items-center bg-green-500/90 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full">
+                        <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                        Online now
+                    </div>
+                </div>
+                
+                <!-- Name/Age overlay -->
+                <div class="absolute bottom-0 left-0 right-0 p-6 z-10">
+                    <h2 class="font-display text-4xl font-bold text-white">
+                        <span id="modal-name"></span><span id="modal-age" class="font-normal"></span>
+                    </h2>
+                    <p id="modal-location" class="text-white/80 flex items-center mt-1">
+                        <i data-lucide="map-pin" class="w-4 h-4 mr-1"></i>
+                        <span></span>
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Details Section -->
+            <div class="p-6 space-y-6">
+                <!-- Tags -->
+                <div id="modal-tags" class="flex flex-wrap gap-2"></div>
+                
+                <!-- Bio -->
+                <div id="modal-bio-section" class="hidden">
+                    <h3 class="text-white font-display text-lg font-semibold mb-3 flex items-center">
+                        <span class="mr-2">📝</span> About Me
+                    </h3>
+                    <p id="modal-bio" class="text-gray-300 leading-relaxed whitespace-pre-line"></p>
+                </div>
+                
+                <!-- Faith & Heritage Section -->
+                <div id="modal-faith-section" class="bg-white/5 rounded-xl p-4 hidden">
+                    <h3 class="text-white font-display text-lg font-semibold mb-3 flex items-center">
+                        <span class="mr-2">✝️</span> Faith & Heritage
+                    </h3>
+                    <dl id="modal-faith-details" class="space-y-2 text-sm"></dl>
+                </div>
+                
+                <!-- Traditional Values Section -->
+                <div id="modal-values-section" class="bg-white/5 rounded-xl p-4 hidden">
+                    <h3 class="text-white font-display text-lg font-semibold mb-3 flex items-center">
+                        <span class="mr-2">⚖️</span> Traditional Values
+                    </h3>
+                    <dl id="modal-values-details" class="space-y-2 text-sm"></dl>
+                </div>
+                
+                <!-- Basics Section -->
+                <div id="modal-basics-section" class="bg-white/5 rounded-xl p-4 hidden">
+                    <h3 class="text-white font-display text-lg font-semibold mb-3 flex items-center">
+                        <span class="mr-2">📋</span> Basics
+                    </h3>
+                    <dl id="modal-basics-details" class="space-y-2 text-sm"></dl>
+                </div>
+                
+                <!-- Lifestyle Section -->
+                <div id="modal-lifestyle-section" class="bg-white/5 rounded-xl p-4 hidden">
+                    <h3 class="text-white font-display text-lg font-semibold mb-3 flex items-center">
+                        <span class="mr-2">🏠</span> Lifestyle
+                    </h3>
+                    <dl id="modal-lifestyle-details" class="space-y-2 text-sm"></dl>
+                </div>
+                
+                <!-- Action buttons -->
+                <div class="flex justify-center items-center space-x-4 pt-4 pb-8 sticky bottom-0 bg-gradient-to-t from-surface-900 via-surface-900 to-transparent">
+                    <button onclick="closeProfileModal(); swipe('left')" 
+                            class="w-16 h-16 bg-surface-800 border-2 border-red-500/50 rounded-full flex items-center justify-center text-red-500 hover:scale-110 active:scale-95 transition-transform shadow-lg">
+                        <i data-lucide="x" class="w-8 h-8"></i>
+                    </button>
+                    <button onclick="closeProfileModal(); swipe('right', true)" 
+                            class="w-14 h-14 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg">
+                        <i data-lucide="star" class="w-7 h-7"></i>
+                    </button>
+                    <button onclick="closeProfileModal(); swipe('right')" 
+                            class="w-16 h-16 bg-gradient-to-r from-green-400 to-green-500 rounded-full flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg">
+                        <i data-lucide="heart" class="w-8 h-8"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Match Modal -->
 <div id="match-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden">
     <div class="bg-white dark:bg-surface-800 rounded-3xl p-8 max-w-sm mx-4 text-center transform scale-95 opacity-0 transition-all" id="match-modal-content">
@@ -185,7 +430,7 @@
                 Keep Swiping
             </button>
             <a href="#" id="match-message-btn"
-               class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl hover:from-amber-400 hover:to-amber-500 transition">
+               class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl hover:from-amber-400 hover:to-amber-500 transition text-center">
                 Say Hello!
             </a>
         </div>
@@ -205,6 +450,7 @@
     const matchModalContent = document.getElementById('match-modal-content');
     const matchName = document.getElementById('match-name');
     const matchMessageBtn = document.getElementById('match-message-btn');
+    const profileModal = document.getElementById('profile-modal');
     
     if (!cardStack) return;
     
@@ -225,12 +471,15 @@
         } else {
             // No more cards
             cardStack.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full text-center">
+                <div class="flex flex-col items-center justify-center h-full text-center p-8">
                     <div class="w-24 h-24 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center mb-6">
                         <span class="text-5xl">✨</span>
                     </div>
                     <h2 class="font-display text-2xl font-bold text-surface-900 dark:text-white mb-2">All Done!</h2>
-                    <p class="text-surface-600 dark:text-gray-400">Check back later for new profiles.</p>
+                    <p class="text-surface-600 dark:text-gray-400 mb-4">You've seen all available profiles.</p>
+                    <a href="/discover/search" class="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full hover:from-amber-400 hover:to-amber-500 transition">
+                        Adjust Filters
+                    </a>
                 </div>
             `;
         }
@@ -238,17 +487,20 @@
     }
     
     function updateCardsRemaining() {
-        cardsRemaining.textContent = Math.max(0, cards.length - currentIndex);
+        if (cardsRemaining) {
+            cardsRemaining.textContent = Math.max(0, cards.length - currentIndex);
+        }
     }
     
-    function swipe(direction, isSuper = false) {
+    // Make swipe globally accessible for modal buttons
+    window.swipe = function(direction, isSuper = false) {
         const card = getCurrentCard();
         if (!card) return;
         
         // Haptic feedback on mobile
         if ('vibrate' in navigator) {
             if (isSuper) {
-                navigator.vibrate([50, 50, 50, 50, 100]); // Extra vibration for super like
+                navigator.vibrate([50, 50, 50, 50, 100]);
             } else {
                 navigator.vibrate(direction === 'right' ? [50, 30, 50] : [30]);
             }
@@ -259,8 +511,11 @@
         // Add animation class
         if (isSuper) {
             card.classList.add('swiping-right');
-            card.querySelector('.like-overlay').style.opacity = 1;
-            card.querySelector('.like-overlay').innerHTML = '<span class="text-6xl">⭐</span>';
+            const likeOverlay = card.querySelector('.like-overlay');
+            if (likeOverlay) {
+                likeOverlay.style.opacity = 1;
+                likeOverlay.innerHTML = '<span class="text-6xl">⭐</span>';
+            }
         } else {
             card.classList.add(direction === 'right' ? 'swiping-right' : 'swiping-left');
         }
@@ -301,13 +556,12 @@
           }).catch(err => console.log('Action recorded'));
         
         setTimeout(showNextCard, 300);
-    }
+    };
     
     function showMatchModal(name, matchId, isSuper = false) {
         matchName.textContent = name;
         matchMessageBtn.href = `/messages/${matchId}`;
         
-        // Update modal for super match
         const modalEmoji = matchModal.querySelector('.text-6xl');
         if (modalEmoji) {
             modalEmoji.textContent = isSuper ? '⭐💕⭐' : '🎉💕🎉';
@@ -331,49 +585,375 @@
         }, 200);
     };
     
+    // Profile Modal Functions
+    let modalCurrentPhotoIndex = 0;
+    let modalPhotos = [];
+    
+    window.showProfileModal = function(userId) {
+        const card = document.querySelector(`.swipe-card[data-user-id="${userId}"]`);
+        if (!card) return;
+        
+        const profileDataScript = card.querySelector('.profile-data');
+        if (!profileDataScript) return;
+        
+        try {
+            const data = JSON.parse(profileDataScript.textContent);
+            
+            // Photo carousel
+            modalPhotos = data.photos && data.photos.length > 0 ? data.photos : [data.photo || '/static/images/default-avatar.svg'];
+            modalCurrentPhotoIndex = 0;
+            
+            const photosContainer = document.getElementById('modal-photos-container');
+            photosContainer.innerHTML = modalPhotos.map((url, i) => `
+                <img src="${url}" alt="${data.name}" 
+                     class="modal-photo-slide absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${i === 0 ? 'opacity-100' : 'opacity-0'}"
+                     data-index="${i}">
+            `).join('');
+            
+            // Photo dots
+            const dotsContainer = document.getElementById('modal-photo-dots');
+            if (modalPhotos.length > 1) {
+                dotsContainer.innerHTML = modalPhotos.map((_, i) => `
+                    <div class="flex-1 h-1 rounded-full transition-all ${i === 0 ? 'bg-white' : 'bg-white/40'}" data-index="${i}"></div>
+                `).join('');
+                dotsContainer.classList.remove('hidden');
+            } else {
+                dotsContainer.classList.add('hidden');
+            }
+            
+            // Online status
+            const onlineStatus = document.getElementById('modal-online-status');
+            if (data.is_online) {
+                onlineStatus.classList.remove('hidden');
+            } else {
+                onlineStatus.classList.add('hidden');
+            }
+            
+            // Name and location
+            document.getElementById('modal-name').textContent = data.name;
+            document.getElementById('modal-age').textContent = data.age ? `, ${data.age}` : '';
+            
+            const locationEl = document.getElementById('modal-location');
+            if (data.city || data.state) {
+                locationEl.querySelector('span').textContent = [data.city, data.state].filter(Boolean).join(', ');
+                locationEl.classList.remove('hidden');
+            } else {
+                locationEl.classList.add('hidden');
+            }
+            
+            // Tags
+            const tagsEl = document.getElementById('modal-tags');
+            tagsEl.innerHTML = '';
+            if (data.denomination) {
+                tagsEl.innerHTML += `<span class="px-3 py-1.5 bg-teal-500/20 text-teal-400 rounded-full text-sm">✝️ ${data.denomination}</span>`;
+            }
+            if (data.speaks_romanian) {
+                tagsEl.innerHTML += `<span class="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-sm">🇷🇴 ${data.speaks_romanian}</span>`;
+            }
+            if (data.conservatism) {
+                tagsEl.innerHTML += `<span class="px-3 py-1.5 bg-purple-500/20 text-purple-400 rounded-full text-sm">⚖️ ${data.conservatism}</span>`;
+            }
+            if (data.relationship_goal) {
+                tagsEl.innerHTML += `<span class="px-3 py-1.5 bg-pink-500/20 text-pink-400 rounded-full text-sm">💕 ${data.relationship_goal}</span>`;
+            }
+            
+            // Bio
+            const bioSection = document.getElementById('modal-bio-section');
+            const bioEl = document.getElementById('modal-bio');
+            if (data.bio && data.bio.trim()) {
+                bioEl.textContent = data.bio;
+                bioSection.classList.remove('hidden');
+            } else {
+                bioSection.classList.add('hidden');
+            }
+            
+            // Faith & Heritage Section
+            const faithSection = document.getElementById('modal-faith-section');
+            const faithDetails = document.getElementById('modal-faith-details');
+            const faithItems = [
+                { label: 'Denomination', value: data.denomination },
+                { label: 'Church', value: data.church_attendance },
+                { label: 'From Romania', value: data.romanian_region },
+                { label: 'Romanian', value: data.speaks_romanian }
+            ].filter(item => item.value);
+            
+            if (faithItems.length > 0) {
+                faithDetails.innerHTML = faithItems.map(item => `
+                    <div class="flex justify-between">
+                        <dt class="text-gray-400">${item.label}</dt>
+                        <dd class="text-gray-200">${item.value}</dd>
+                    </div>
+                `).join('');
+                faithSection.classList.remove('hidden');
+            } else {
+                faithSection.classList.add('hidden');
+            }
+            
+            // Traditional Values Section
+            const valuesSection = document.getElementById('modal-values-section');
+            const valuesDetails = document.getElementById('modal-values-details');
+            const valuesItems = [
+                { label: 'Lifestyle', value: data.conservatism },
+                { label: 'Prayer', value: data.prayer },
+                { label: 'Fasting', value: data.fasting },
+                { label: 'Family Roles', value: data.family_role },
+                { label: 'Head Covering', value: data.head_covering }
+            ].filter(item => item.value);
+            
+            if (valuesItems.length > 0) {
+                valuesDetails.innerHTML = valuesItems.map(item => `
+                    <div class="flex justify-between">
+                        <dt class="text-gray-400">${item.label}</dt>
+                        <dd class="text-gray-200">${item.value}</dd>
+                    </div>
+                `).join('');
+                valuesSection.classList.remove('hidden');
+            } else {
+                valuesSection.classList.add('hidden');
+            }
+            
+            // Basics Section
+            const basicsSection = document.getElementById('modal-basics-section');
+            const basicsDetails = document.getElementById('modal-basics-details');
+            const basicsItems = [
+                { label: 'Work', value: data.occupation },
+                { label: 'Education', value: data.education },
+                { label: 'Height', value: data.height }
+            ].filter(item => item.value);
+            
+            if (basicsItems.length > 0) {
+                basicsDetails.innerHTML = basicsItems.map(item => `
+                    <div class="flex justify-between">
+                        <dt class="text-gray-400">${item.label}</dt>
+                        <dd class="text-gray-200">${item.value}</dd>
+                    </div>
+                `).join('');
+                basicsSection.classList.remove('hidden');
+            } else {
+                basicsSection.classList.add('hidden');
+            }
+            
+            // Lifestyle Section
+            const lifestyleSection = document.getElementById('modal-lifestyle-section');
+            const lifestyleDetails = document.getElementById('modal-lifestyle-details');
+            const lifestyleItems = [
+                { label: 'Children', value: data.wants_children },
+                { label: 'Smoking', value: data.smoking },
+                { label: 'Drinking', value: data.drinking },
+                { label: 'Church Wedding', value: data.wants_church_wedding ? '💒 Yes' : '' }
+            ].filter(item => item.value);
+            
+            if (lifestyleItems.length > 0) {
+                lifestyleDetails.innerHTML = lifestyleItems.map(item => `
+                    <div class="flex justify-between">
+                        <dt class="text-gray-400">${item.label}</dt>
+                        <dd class="text-gray-200">${item.value}</dd>
+                    </div>
+                `).join('');
+                lifestyleSection.classList.remove('hidden');
+            } else {
+                lifestyleSection.classList.add('hidden');
+            }
+            
+            // Show modal
+            profileModal.classList.remove('hidden');
+            profileModal.scrollTop = 0;
+            document.body.style.overflow = 'hidden';
+            lucide.createIcons();
+            
+        } catch (e) {
+            console.error('Error parsing profile data:', e);
+        }
+    };
+    
+    // Modal photo navigation
+    window.modalNextPhoto = function() {
+        if (modalPhotos.length <= 1) return;
+        modalCurrentPhotoIndex = (modalCurrentPhotoIndex + 1) % modalPhotos.length;
+        updateModalPhoto();
+    };
+    
+    window.modalPrevPhoto = function() {
+        if (modalPhotos.length <= 1) return;
+        modalCurrentPhotoIndex = (modalCurrentPhotoIndex - 1 + modalPhotos.length) % modalPhotos.length;
+        updateModalPhoto();
+    };
+    
+    function updateModalPhoto() {
+        const slides = document.querySelectorAll('.modal-photo-slide');
+        const dots = document.querySelectorAll('#modal-photo-dots > div');
+        
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('opacity-100', i === modalCurrentPhotoIndex);
+            slide.classList.toggle('opacity-0', i !== modalCurrentPhotoIndex);
+        });
+        
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('bg-white', i === modalCurrentPhotoIndex);
+            dot.classList.toggle('bg-white/40', i !== modalCurrentPhotoIndex);
+        });
+    }
+    
+    window.closeProfileModal = function() {
+        profileModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+    
+    // Card photo navigation functions
+    window.nextPhoto = function(el) {
+        const carousel = el.closest('.photo-carousel');
+        if (!carousel) return;
+        
+        const slides = carousel.querySelectorAll('.photo-slide');
+        const dots = carousel.querySelectorAll('.photo-dot');
+        if (slides.length <= 1) return;
+        
+        let currentIndex = parseInt(carousel.dataset.photoIndex) || 0;
+        currentIndex = (currentIndex + 1) % slides.length;
+        carousel.dataset.photoIndex = currentIndex;
+        
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('opacity-100', i === currentIndex);
+            slide.classList.toggle('opacity-0', i !== currentIndex);
+        });
+        
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('bg-white', i === currentIndex);
+            dot.classList.toggle('bg-white/40', i !== currentIndex);
+        });
+    };
+    
+    window.prevPhoto = function(el) {
+        const carousel = el.closest('.photo-carousel');
+        if (!carousel) return;
+        
+        const slides = carousel.querySelectorAll('.photo-slide');
+        const dots = carousel.querySelectorAll('.photo-dot');
+        if (slides.length <= 1) return;
+        
+        let currentIndex = parseInt(carousel.dataset.photoIndex) || 0;
+        currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+        carousel.dataset.photoIndex = currentIndex;
+        
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('opacity-100', i === currentIndex);
+            slide.classList.toggle('opacity-0', i !== currentIndex);
+        });
+        
+        dots.forEach((dot, i) => {
+            dot.classList.toggle('bg-white', i === currentIndex);
+            dot.classList.toggle('bg-white/40', i !== currentIndex);
+        });
+    };
+    
+    // Swipe down to close profile modal
+    let modalStartY = 0;
+    profileModal.addEventListener('touchstart', (e) => {
+        modalStartY = e.touches[0].clientY;
+    });
+    
+    profileModal.addEventListener('touchmove', (e) => {
+        const currentY = e.touches[0].clientY;
+        const diff = currentY - modalStartY;
+        
+        if (diff > 100 && profileModal.scrollTop === 0) {
+            closeProfileModal();
+        }
+    });
+    
     // Button handlers
     btnLike.addEventListener('click', () => swipe('right'));
     btnPass.addEventListener('click', () => swipe('left'));
     if (btnSuperLike) {
         btnSuperLike.addEventListener('click', () => swipe('right', true));
     }
-    btnInfo.addEventListener('click', () => {
-        const card = getCurrentCard();
-        if (card) {
-            const userId = card.dataset.userId;
-            window.location.href = `/profile/user/${userId}`;
-        }
-    });
+    if (btnInfo) {
+        btnInfo.addEventListener('click', () => {
+            const card = getCurrentCard();
+            if (card) {
+                showProfileModal(card.dataset.userId);
+            }
+        });
+    }
+    
+    // Desktop: Click on card to open profile (not on touch devices)
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouch) {
+        cardStack.addEventListener('click', (e) => {
+            // Ignore clicks on buttons inside the card
+            if (e.target.closest('button')) return;
+            
+            const card = getCurrentCard();
+            if (card) {
+                showProfileModal(card.dataset.userId);
+            }
+        });
+        
+        // Add cursor pointer to card on desktop
+        cardStack.style.cursor = 'pointer';
+    }
     
     // Keyboard controls
     document.addEventListener('keydown', (e) => {
+        // Don't trigger if modal is open
+        if (!profileModal.classList.contains('hidden')) {
+            if (e.key === 'Escape') closeProfileModal();
+            return;
+        }
         if (e.key === 'ArrowRight') swipe('right');
         if (e.key === 'ArrowLeft') swipe('left');
+        if (e.key === 'ArrowUp') {
+            const card = getCurrentCard();
+            if (card) showProfileModal(card.dataset.userId);
+        }
     });
     
-    // Touch/drag support (simplified)
+    // Touch/drag support for cards
     let startX = 0;
+    let startY = 0;
     let currentX = 0;
+    let currentY = 0;
     let isDragging = false;
     
     cardStack.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        currentX = startX;
+        currentY = startY;
         isDragging = true;
     });
     
     cardStack.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
         currentX = e.touches[0].clientX;
-        const diff = currentX - startX;
+        currentY = e.touches[0].clientY;
+        const diffX = currentX - startX;
+        const diffY = currentY - startY;
+        
+        // Swipe up detection (for profile modal)
+        if (diffY < -80 && Math.abs(diffX) < 50) {
+            isDragging = false;
+            const card = getCurrentCard();
+            if (card) {
+                card.style.transform = '';
+                card.querySelector('.like-overlay').style.opacity = 0;
+                card.querySelector('.nope-overlay').style.opacity = 0;
+                showProfileModal(card.dataset.userId);
+            }
+            return;
+        }
+        
         const card = getCurrentCard();
         if (card) {
-            card.style.transform = `translateX(${diff}px) rotate(${diff * 0.05}deg)`;
+            card.style.transform = `translateX(${diffX}px) rotate(${diffX * 0.05}deg)`;
             
             // Show overlay based on direction
-            if (diff > 50) {
-                card.querySelector('.like-overlay').style.opacity = Math.min(1, (diff - 50) / 100);
-            } else if (diff < -50) {
-                card.querySelector('.nope-overlay').style.opacity = Math.min(1, (-diff - 50) / 100);
+            const likeOverlay = card.querySelector('.like-overlay');
+            const nopeOverlay = card.querySelector('.nope-overlay');
+            if (diffX > 50 && likeOverlay) {
+                likeOverlay.style.opacity = Math.min(1, (diffX - 50) / 100);
+            } else if (diffX < -50 && nopeOverlay) {
+                nopeOverlay.style.opacity = Math.min(1, (-diffX - 50) / 100);
             }
         }
     });
@@ -382,16 +962,31 @@
         if (!isDragging) return;
         isDragging = false;
         
-        const diff = currentX - startX;
+        const diffX = currentX - startX;
         const card = getCurrentCard();
         
-        if (Math.abs(diff) > 100) {
-            swipe(diff > 0 ? 'right' : 'left');
+        if (Math.abs(diffX) > 100) {
+            swipe(diffX > 0 ? 'right' : 'left');
         } else if (card) {
             card.style.transform = '';
-            card.querySelector('.like-overlay').style.opacity = 0;
-            card.querySelector('.nope-overlay').style.opacity = 0;
+            const likeOverlay = card.querySelector('.like-overlay');
+            const nopeOverlay = card.querySelector('.nope-overlay');
+            if (likeOverlay) likeOverlay.style.opacity = 0;
+            if (nopeOverlay) nopeOverlay.style.opacity = 0;
         }
+    });
+    
+    // Double-tap to like
+    let lastTap = 0;
+    cardStack.addEventListener('touchend', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 300 && tapLength > 0) {
+            // Double tap - like!
+            swipe('right');
+            e.preventDefault();
+        }
+        lastTap = currentTime;
     });
     
     lucide.createIcons();

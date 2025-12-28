@@ -12,66 +12,22 @@
   "categories": ["social", "lifestyle"],
   "icons": [
     {
-      "src": "/static/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-192x192.png",
+      "src": "/static/icons/icon-192x192.svg",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "/static/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/static/icons/icon-512x512.png",
+      "src": "/static/icons/icon-192x192.svg",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/static/screenshots/discover.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "/static/screenshots/chat.png",
-      "sizes": "1080x1920",
+      "src": "/static/images/logo.png",
+      "sizes": "any",
       "type": "image/png",
-      "form_factor": "narrow"
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -79,15 +35,13 @@
       "name": "Discover",
       "short_name": "Discover",
       "description": "Find new matches",
-      "url": "/discover",
-      "icons": [{"src": "/static/icons/discover.png", "sizes": "96x96"}]
+      "url": "/discover/swipe"
     },
     {
       "name": "Messages",
       "short_name": "Messages",
       "description": "View your messages",
-      "url": "/messages",
-      "icons": [{"src": "/static/icons/messages.png", "sizes": "96x96"}]
+      "url": "/messages"
     }
   ],
   "related_applications": [],

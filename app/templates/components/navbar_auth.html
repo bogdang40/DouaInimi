@@ -10,33 +10,27 @@
                 </a>
             </div>
             
-            <!-- Main Nav Links -->
+            <!-- Main Nav Links - Tinder style (center aligned) -->
             <div class="hidden md:flex md:items-center md:space-x-1">
-                <a href="{{ url_for('main.dashboard') }}" 
+                <a href="{{ url_for('discover.swipe') }}" 
                    class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
-                          {% if request.endpoint == 'main.dashboard' %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
-                    <i data-lucide="home" class="w-4 h-4"></i>
-                    <span>Home</span>
-                </a>
-                <a href="{{ url_for('discover.browse') }}" 
-                   class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
-                          {% if 'discover' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
-                    <i data-lucide="compass" class="w-4 h-4"></i>
+                          {% if 'discover' in request.endpoint %}bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-600 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="flame" class="w-5 h-5"></i>
                     <span>Discover</span>
                 </a>
                 <a href="{{ url_for('matches.list') }}" 
                    class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
-                          {% if 'matches' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
-                    <i data-lucide="heart" class="w-4 h-4"></i>
+                          {% if 'matches' in request.endpoint %}bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-600 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="heart" class="w-5 h-5"></i>
                     <span>Matches</span>
                 </a>
                 <a href="{{ url_for('messages.inbox') }}" 
                    class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition relative
-                          {% if 'messages' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
-                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                          {% if 'messages' in request.endpoint %}bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-600 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="message-circle" class="w-5 h-5"></i>
                     <span>Messages</span>
                     {% if total_unread_messages and total_unread_messages > 0 %}
-                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
                         {{ total_unread_messages if total_unread_messages < 10 else '9+' }}
                     </span>
                     {% endif %}
@@ -118,38 +112,55 @@
         </div>
     </div>
     
-    <!-- Mobile Bottom Navigation -->
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 z-50">
-        <div class="flex justify-around py-2">
-            <a href="{{ url_for('main.dashboard') }}" 
-               class="flex flex-col items-center p-2 {% if request.endpoint == 'main.dashboard' %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
-                <i data-lucide="home" class="w-5 h-5"></i>
-                <span class="text-xs mt-1">Home</span>
+    <!-- Mobile Bottom Navigation - Tinder-style (4 items) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 z-50 safe-bottom">
+        <div class="flex justify-around py-2 px-4">
+            <!-- Swipe/Discover - Primary Action -->
+            <a href="{{ url_for('discover.swipe') }}" 
+               class="flex flex-col items-center p-2 min-w-[60px] {% if 'discover' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <div class="relative">
+                    <i data-lucide="flame" class="w-6 h-6"></i>
+                </div>
+                <span class="text-[10px] mt-1 font-medium">Discover</span>
             </a>
-            <a href="{{ url_for('discover.browse') }}" 
-               class="flex flex-col items-center p-2 {% if 'discover' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
-                <i data-lucide="compass" class="w-5 h-5"></i>
-                <span class="text-xs mt-1">Discover</span>
-            </a>
+            
+            <!-- Matches/Likes -->
             <a href="{{ url_for('matches.list') }}" 
-               class="flex flex-col items-center p-2 {% if 'matches' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
-                <i data-lucide="heart" class="w-5 h-5"></i>
-                <span class="text-xs mt-1">Matches</span>
+               class="flex flex-col items-center p-2 min-w-[60px] {% if 'matches' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <div class="relative">
+                    <i data-lucide="heart" class="w-6 h-6"></i>
+                    {% if user_matches_count and user_matches_count > 0 %}
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                        {{ user_matches_count if user_matches_count < 10 else '9+' }}
+                    </span>
+                    {% endif %}
+                </div>
+                <span class="text-[10px] mt-1 font-medium">Matches</span>
             </a>
+            
+            <!-- Messages -->
             <a href="{{ url_for('messages.inbox') }}" 
-               class="flex flex-col items-center p-2 relative {% if 'messages' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
-                <i data-lucide="message-circle" class="w-5 h-5"></i>
-                <span class="text-xs mt-1">Messages</span>
-                {% if total_unread_messages and total_unread_messages > 0 %}
-                <span class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
-                    {{ total_unread_messages if total_unread_messages < 10 else '9+' }}
-                </span>
-                {% endif %}
+               class="flex flex-col items-center p-2 min-w-[60px] relative {% if 'messages' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <div class="relative">
+                    <i data-lucide="message-circle" class="w-6 h-6"></i>
+                    {% if total_unread_messages and total_unread_messages > 0 %}
+                    <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
+                        {{ total_unread_messages if total_unread_messages < 10 else '9+' }}
+                    </span>
+                    {% endif %}
+                </div>
+                <span class="text-[10px] mt-1 font-medium">Chats</span>
             </a>
+            
+            <!-- Profile -->
             <a href="{{ url_for('profile.view') }}" 
-               class="flex flex-col items-center p-2 {% if 'profile' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
-                <i data-lucide="user" class="w-5 h-5"></i>
-                <span class="text-xs mt-1">Profile</span>
+               class="flex flex-col items-center p-2 min-w-[60px] {% if 'profile' in request.endpoint or 'settings' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <div class="relative">
+                    <img src="{{ current_user.primary_photo_url }}" 
+                         alt="Profile" 
+                         class="w-6 h-6 rounded-full object-cover border-2 {% if 'profile' in request.endpoint %}border-amber-500{% else %}border-surface-300 dark:border-white/20{% endif %}">
+                </div>
+                <span class="text-[10px] mt-1 font-medium">Profile</span>
             </a>
         </div>
     </div>

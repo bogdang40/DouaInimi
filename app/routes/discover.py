@@ -13,7 +13,13 @@ discover_bp = Blueprint('discover', __name__)
 
 
 def get_potential_matches(user, filters=None, page=1, per_page=20):
-    """Get potential matches for a user based on preferences and filters."""
+    """Get potential matches for a user based on preferences and filters.
+    
+    CONSERVATIVE CHRISTIAN MATCHING:
+    - Women only see men
+    - Men only see women
+    No same-sex matching option.
+    """
     profile = user.profile
     if not profile:
         return []
@@ -39,9 +45,15 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
     if excluded_ids:
         query = query.filter(not_(User.id.in_(excluded_ids)))
     
-    # Apply user's looking_for preferences
-    if profile.looking_for_gender:
-        query = query.filter(Profile.gender == profile.looking_for_gender)
+    # CONSERVATIVE MATCHING: Opposite gender only
+    # Women see men, men see women
+    if profile.gender == 'female':
+        query = query.filter(Profile.gender == 'male')
+    elif profile.gender == 'male':
+        query = query.filter(Profile.gender == 'female')
+    else:
+        # If gender not set, default to showing opposite (assume user sets their gender)
+        pass
     
     # Age range filter
     from datetime import date, timedelta

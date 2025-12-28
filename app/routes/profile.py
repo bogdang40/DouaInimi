@@ -67,7 +67,16 @@ def edit():
         profile.bio = form.bio.data
         profile.occupation = form.occupation.data or None
         profile.education = form.education.data or None
-        profile.height_cm = form.height_cm.data
+        
+        # Handle height - either from cm or ft/in
+        if form.height_cm.data:
+            profile.height_cm = form.height_cm.data
+        elif form.height_ft.data and form.height_in.data:
+            # Convert feet/inches to cm
+            feet = int(form.height_ft.data) if form.height_ft.data else 0
+            inches = int(form.height_in.data) if form.height_in.data else 0
+            total_inches = (feet * 12) + inches
+            profile.height_cm = int(total_inches * 2.54)
         
         profile.has_children = form.has_children.data
         profile.wants_children = form.wants_children.data or None
@@ -86,7 +95,15 @@ def edit():
         profile.willing_to_relocate = form.willing_to_relocate.data
         profile.wants_church_wedding = form.wants_church_wedding.data
         
-        profile.looking_for_gender = form.looking_for_gender.data
+        # Conservative matching: Auto-set looking_for_gender to opposite gender
+        # Women see men, men see women
+        if profile.gender == 'female':
+            profile.looking_for_gender = 'male'
+        elif profile.gender == 'male':
+            profile.looking_for_gender = 'female'
+        else:
+            profile.looking_for_gender = None
+        
         profile.looking_for_age_min = form.looking_for_age_min.data or 18
         profile.looking_for_age_max = form.looking_for_age_max.data or 99
         profile.relationship_goal = form.relationship_goal.data or None
@@ -145,6 +162,14 @@ def edit():
         form.occupation.data = profile.occupation
         form.education.data = profile.education
         form.height_cm.data = profile.height_cm
+        
+        # Also convert height_cm to ft/in for display
+        if profile.height_cm:
+            total_inches = profile.height_cm / 2.54
+            feet = int(total_inches // 12)
+            inches = int(total_inches % 12)
+            form.height_ft.data = str(feet) if 4 <= feet <= 7 else ''
+            form.height_in.data = str(inches) if 0 <= inches <= 11 else ''
         
         form.has_children.data = profile.has_children
         form.wants_children.data = profile.wants_children
