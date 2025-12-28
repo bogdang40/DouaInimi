@@ -6,10 +6,57 @@
 **Target:** Romanian Christians in USA & Canada  
 **Scale:** ~1000 users  
 **Stack:** Flask + SQLite (dev) / PostgreSQL (prod) + Azure  
+**GitHub:** https://github.com/bogdang40/DouaInimi.git
 
 ---
 
-## 🎯 Current Status: **Phase 1 COMPLETE** ✅
+## 🚀 DEPLOYMENT STATUS
+
+### Azure Infrastructure ✅ Created
+
+| Service | Name | Region | Tier | Cost/Month | Status |
+|---------|------|--------|------|------------|--------|
+| **App Service** | douainimi | East US 2 | Basic B1 | ~$12 | ✅ Created |
+| **PostgreSQL** | douainimi-db | Canada Central | Burstable B1ms | ~$17 | ✅ Created |
+| **Total** | | | | **~$29/month** | |
+
+### App Service Environment Variables ✅ Configured
+
+| Variable | Status |
+|----------|--------|
+| `DATABASE_URL` | ✅ Set |
+| `SECRET_KEY` | ✅ Set |
+| `FLASK_ENV` | ✅ Set to `production` |
+
+### Database Connection
+
+```
+Host: douainimi-db.postgres.database.azure.com
+Database: postgres
+Username: douainimiadmin
+Port: 5432
+```
+
+### ⏳ Deployment Next Steps
+
+| Step | Status | Action |
+|------|--------|--------|
+| 1. Push code to GitHub | ⏳ Pending | Run `git push -u origin main` from terminal |
+| 2. Connect Azure to GitHub | ⏳ Pending | Deployment Center → GitHub |
+| 3. Set startup command | ⏳ Pending | See below |
+| 4. Run database migrations | ⏳ Pending | SSH into App Service |
+| 5. Test live site | ⏳ Pending | Visit `douainimi.azurewebsites.net` |
+
+### Startup Command (Add to App Service)
+
+In Azure App Service → Configuration → General settings → Startup Command:
+```bash
+gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
+```
+
+---
+
+## 🎯 Current Status: **Phase 1 COMPLETE** ✅ | **Deploying to Azure** 🚀
 
 ### What's Been Built
 
@@ -268,14 +315,19 @@ dating-app/
 
 | Task | Priority | Status |
 |------|----------|--------|
-| Azure App Service setup | 🔴 High | Pending |
-| Azure PostgreSQL setup | 🔴 High | Pending |
-| Azure Blob Storage setup | 🔴 High | Pending |
-| Custom domain + SSL | 🔴 High | Pending |
-| SendGrid email setup | 🔴 High | Pending |
-| GitHub Actions CI/CD | 🟡 Medium | Pending |
-| Sentry error monitoring | 🟡 Medium | Pending |
-| Azure CDN for images | 🟢 Low | Pending |
+| Azure App Service setup | 🔴 High | ✅ Created (Basic B1, Linux) |
+| Azure PostgreSQL setup | 🔴 High | ✅ Created (Burstable B1ms) |
+| App Service Config | 🔴 High | ✅ Environment variables set |
+| GitHub Repository | 🔴 High | ✅ Code committed, ready to push |
+| Connect Azure ↔ GitHub | 🔴 High | ⏳ Pending |
+| Run DB Migrations | 🔴 High | ⏳ Pending (after deployment) |
+| Azure Blob Storage setup | 🟡 Medium | ⏳ Pending (photos work locally for now) |
+| Custom domain + SSL | 🟡 Medium | ⏳ Pending |
+| SendGrid email setup | 🟡 Medium | ⏳ Pending (needs domain) |
+| reCAPTCHA Keys | 🟢 Low | ⏳ Pending (optional) |
+| GitHub Actions CI/CD | 🟢 Low | ⏳ Pending |
+| Sentry error monitoring | 🟢 Low | ⏳ Pending |
+| Azure CDN for images | 🟢 Low | ⏳ Pending |
 
 ### Security Enhancements
 
@@ -304,7 +356,6 @@ dating-app/
 #### Step 1: Create SendGrid Account
 1. Go to [sendgrid.com](https://sendgrid.com) and sign up (free tier available)
 2. Complete email verification
-
 #### Step 2: Domain Authentication (Recommended)
 For professional emails (e.g., `noreply@douainimi.com`), you need a domain:
 
@@ -428,15 +479,17 @@ AZURE_STORAGE_CONTAINER=photos
 
 ---
 
-## 💰 Azure Cost Estimate (Monthly)
+## 💰 Azure Cost (Actual)
 
-| Service | Tier | Est. Cost |
-|---------|------|-----------|
-| App Service | B1 (1 core, 1.75GB) | ~$13 |
-| PostgreSQL Flexible | Burstable B1ms | ~$15 |
-| Blob Storage | 10GB + transactions | ~$2 |
-| SendGrid | Free tier (100/day) | $0 |
-| **Total** | | **~$30/month** |
+| Service | Tier | Actual Cost |
+|---------|------|-------------|
+| App Service | Basic B1 (1 core, 1.75GB) | **$12.41/month** |
+| PostgreSQL | Burstable B1ms (1 vCore, 2GB RAM, 32GB) | **$17.56/month** |
+| Blob Storage | (Not yet set up) | ~$2/month |
+| SendGrid | Free tier (100 emails/day) | $0 |
+| Domain | (Not yet purchased) | ~$1/month |
+| **Current Total** | | **$29.97/month** |
+| **With all services** | | **~$33/month** |
 
 ---
 
@@ -556,28 +609,57 @@ flask db upgrade
 
 ---
 
-## 🎯 Immediate Next Steps (Production Deployment)
+## 🎯 Immediate Next Steps (Complete Deployment)
 
-1. **Azure Setup**
-   - Create App Service (Linux B1)
-   - Create PostgreSQL Flexible Server
-   - Create Blob Storage account
-   - Configure environment variables
+### ✅ COMPLETED
+- [x] Azure App Service created (Basic B1, ~$12/month)
+- [x] Azure PostgreSQL created (Burstable B1ms, ~$17/month)
+- [x] Environment variables configured (DATABASE_URL, SECRET_KEY, FLASK_ENV)
+- [x] Code committed to git (104 files)
+- [x] GitHub repository created: https://github.com/bogdang40/DouaInimi.git
 
-2. **SendGrid Integration**
-   - Create SendGrid account
-   - Configure MAIL settings
-   - Test email delivery
+### ⏳ REMAINING (Do These Now)
 
-3. **Image Processing**
-   - Add Pillow image resize on upload
-   - Generate thumbnails
-   - Compress large images
+#### Step 1: Push Code to GitHub
+```bash
+cd /Users/yztpp8/Desktop/Personal/Dating
+git push -u origin main
+```
+(Use your GitHub credentials when prompted)
 
-4. **Final Testing**
-   - Test all user flows
-   - Test admin panel
-   - Test on mobile devices
+#### Step 2: Connect Azure to GitHub
+1. Go to Azure App Service → **Deployment Center**
+2. Source: **GitHub**
+3. Authorize and select `bogdang40/DouaInimi`
+4. Branch: `main`
+5. Save
+
+#### Step 3: Add Startup Command
+1. App Service → **Configuration** → **General settings**
+2. Startup Command:
+```bash
+gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
+```
+3. Save
+
+#### Step 4: Run Database Migrations
+After deployment completes:
+1. App Service → **SSH** (under Development Tools)
+2. Run:
+```bash
+cd /home/site/wwwroot
+flask db upgrade
+```
+
+#### Step 5: Test Live Site
+- Visit: `https://douainimi.azurewebsites.net`
+
+### 🔮 FUTURE ENHANCEMENTS
+- [ ] Buy domain (douainimi.com) - ~$12/year
+- [ ] Configure SendGrid for emails
+- [ ] Add reCAPTCHA keys
+- [ ] Set up Azure Blob Storage for photos
+- [ ] Add Sentry for error monitoring
 
 ---
 
@@ -617,4 +699,42 @@ flask db upgrade
 
 ---
 
-Ready to deploy! 🚀
+## 📅 Deployment Timeline
+
+| Date | Milestone |
+|------|-----------|
+| Dec 2024 | Phase 1 Development Complete |
+| Dec 27, 2024 | Azure Infrastructure Created |
+| Dec 27, 2024 | App Service + PostgreSQL configured |
+| Pending | GitHub push + deployment |
+| Pending | Live at douainimi.azurewebsites.net |
+
+---
+
+## 🔑 Quick Reference
+
+### Local Development
+```bash
+cd /Users/yztpp8/Desktop/Personal/Dating
+source venv/bin/activate
+python run.py
+# → http://localhost:5001
+```
+
+### Deploy to Azure
+```bash
+git add .
+git commit -m "Your changes"
+git push origin main
+# Azure auto-deploys from GitHub
+```
+
+### Azure Resources
+- **App Service:** douainimi.azurewebsites.net
+- **PostgreSQL:** douainimi-db.postgres.database.azure.com
+- **Resource Group:** DouaInimi
+- **Region:** East US 2 (App), Canada Central (DB)
+
+---
+
+**Status:** Phase 1 Complete ✅ | Deploying to Production 🚀
