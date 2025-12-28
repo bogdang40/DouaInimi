@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+
+{% block title %}Search - {{ app_name }}{% endblock %}
+
+{% block main_class %}pb-20 md:pb-0{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Search</h1>
+            <p class="mt-1 text-surface-600 dark:text-gray-400">Filter profiles by your preferences</p>
+        </div>
+        <a href="{{ url_for('discover.browse') }}" 
+           class="flex items-center space-x-2 px-4 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10 transition">
+            <i data-lucide="grid" class="w-4 h-4"></i>
+            <span>Browse All</span>
+        </a>
+    </div>
+    
+    <div class="grid lg:grid-cols-4 gap-8">
+        <!-- Filters Sidebar -->
+        <div class="lg:col-span-1">
+            <form method="POST" class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl p-6 sticky top-24">
+                {{ form.hidden_tag() }}
+                
+                <h2 class="font-display text-lg font-semibold text-surface-900 dark:text-white mb-6 flex items-center">
+                    <i data-lucide="sliders" class="w-5 h-5 mr-2 text-amber-500"></i>
+                    Filters
+                </h2>
+                
+                <!-- Denomination -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        ✝️ Denomination
+                    </label>
+                    {{ form.denomination(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- Country -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        🌍 Country
+                    </label>
+                    {{ form.country(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- State/Province -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        📍 State/Province
+                    </label>
+                    {{ form.state_province(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- Romanian Language -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        🇷🇴 Romanian Level
+                    </label>
+                    {{ form.speaks_romanian(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- Church Attendance -->
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        ⛪ Church Attendance
+                    </label>
+                    {{ form.church_attendance(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- Relationship Goal -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                        💕 Looking For
+                    </label>
+                    {{ form.relationship_goal(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+                
+                <!-- Submit -->
+                <button type="submit" 
+                        class="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl hover:from-amber-400 hover:to-amber-500 transition">
+                    <i data-lucide="search" class="w-4 h-4 inline mr-2"></i>
+                    Apply Filters
+                </button>
+                
+                <!-- Reset -->
+                <a href="{{ url_for('discover.search') }}" 
+                   class="block w-full text-center mt-3 py-2 text-surface-500 dark:text-gray-400 hover:text-surface-700 dark:hover:text-white text-sm">
+                    Reset Filters
+                </a>
+            </form>
+        </div>
+        
+        <!-- Results -->
+        <div class="lg:col-span-3">
+            {% if users.items %}
+            <div class="mb-4">
+                <p class="text-surface-600 dark:text-gray-400">
+                    Found <span class="font-semibold text-surface-900 dark:text-white">{{ users.total }}</span> profiles
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {% for user in users.items %}
+                {% set profile = user.profile %}
+                <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden hover:shadow-lg dark:hover:bg-white/10 transition group">
+                    <!-- Photo -->
+                    <a href="{{ url_for('profile.view_user', user_id=user.id) }}" class="block relative">
+                        <div class="aspect-[3/4] overflow-hidden">
+                            <img src="{{ user.primary_photo_url }}" 
+                                 alt="{{ user.display_name }}"
+                                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-4">
+                            <h3 class="font-display text-xl font-semibold text-white">
+                                {{ user.display_name }}{% if profile and profile.age %}, {{ profile.age }}{% endif %}
+                            </h3>
+                            {% if profile %}
+                            <p class="text-sm text-white/80 flex items-center mt-1">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1"></i>
+                                {{ profile.city }}{% if profile.state_province %}, {{ profile.state_province }}{% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </a>
+                    
+                    <!-- Tags -->
+                    <div class="p-4">
+                        {% if profile %}
+                        <div class="flex flex-wrap gap-1.5 mb-4">
+                            {% if profile.denomination %}
+                            <span class="inline-flex items-center px-2 py-0.5 bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-full text-xs">
+                                ✝️ {{ dict(config['DENOMINATIONS']).get(profile.denomination, profile.denomination)[:12] }}
+                            </span>
+                            {% endif %}
+                            {% if profile.speaks_romanian %}
+                            <span class="inline-flex items-center px-2 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-xs">
+                                🇷🇴 {{ profile.get_speaks_romanian_display() }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Actions -->
+                        <div class="flex space-x-2">
+                            <form action="{{ url_for('discover.pass_user', user_id=user.id) }}" method="POST" class="flex-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 transition text-sm">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                    <span>Pass</span>
+                                </button>
+                            </form>
+                            <form action="{{ url_for('discover.like_user', user_id=user.id) }}" method="POST" class="flex-1">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-400 hover:to-red-500 transition text-sm">
+                                    <i data-lucide="heart" class="w-4 h-4"></i>
+                                    <span>Like</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if users.pages > 1 %}
+            <div class="mt-8 flex justify-center">
+                <nav class="flex items-center space-x-2">
+                    {% if users.has_prev %}
+                    <a href="{{ url_for('discover.search', page=users.prev_num) }}" 
+                       class="px-4 py-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10 transition">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </a>
+                    {% endif %}
+                    <span class="px-4 py-2 text-surface-600 dark:text-gray-400">Page {{ users.page }} of {{ users.pages }}</span>
+                    {% if users.has_next %}
+                    <a href="{{ url_for('discover.search', page=users.next_num) }}" 
+                       class="px-4 py-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-50 dark:hover:bg-white/10 transition">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <!-- No Results -->
+            <div class="text-center py-16 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl">
+                <div class="w-20 h-20 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="search" class="w-10 h-10 text-amber-600 dark:text-amber-400"></i>
+                </div>
+                <h3 class="font-display text-2xl font-semibold text-surface-900 dark:text-white mb-2">No Matches Found</h3>
+                <p class="text-surface-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+                    Try adjusting your filters to see more profiles.
+                </p>
+                <a href="{{ url_for('discover.search') }}" 
+                   class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full hover:from-amber-400 hover:to-amber-500 transition">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i>
+                    Reset Filters
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

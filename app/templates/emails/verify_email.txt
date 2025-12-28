@@ -1,0 +1,24 @@
+Verify Your Email
+=================
+
+Hi {{ user.display_name or 'there' }},
+
+Welcome to Două Inimi! We're excited to have you join our community of Romanian Christians looking for meaningful connections.
+
+Please verify your email address by clicking the link below:
+
+{{ verification_url }}
+
+This link will expire in 24 hours.
+
+After verifying your email, you'll be able to:
+- Browse profiles of other members
+- Like and match with people
+- Send and receive messages
+
+Blessings,
+The Două Inimi Team
+
+---
+If you didn't create an account on Două Inimi, you can safely ignore this email.
+

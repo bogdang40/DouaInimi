@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Messages - {{ app_name }}{% endblock %}
+
+{% block main_class %}pb-20 md:pb-0{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
+    <div class="mb-8">
+        <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Messages</h1>
+        <p class="mt-1 text-surface-600 dark:text-gray-400">Your conversations with matches</p>
+    </div>
+    
+    {% if conversations %}
+    <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl divide-y divide-surface-100 dark:divide-white/5">
+        {% for conv in conversations %}
+        {% set other_user = conv.match.get_other_user(current_user.id) %}
+        {% set unread = conv.match.unread_count(current_user.id) %}
+        <a href="{{ url_for('messages.conversation', match_id=conv.match.id) }}" 
+           class="flex items-center p-4 hover:bg-surface-50 dark:hover:bg-white/5 transition {% if unread > 0 %}bg-amber-50 dark:bg-amber-500/5{% endif %}">
+            <!-- Avatar -->
+            <div class="relative flex-shrink-0">
+                <img src="{{ other_user.primary_photo_url }}" 
+                     alt="{{ other_user.display_name }}"
+                     class="w-14 h-14 rounded-full object-cover ring-2 {% if unread > 0 %}ring-amber-500{% else %}ring-surface-200 dark:ring-white/10{% endif %}">
+                {% if unread > 0 %}
+                <div class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {{ unread if unread < 10 else '9+' }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Content -->
+            <div class="ml-4 flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold {% if unread > 0 %}text-surface-900 dark:text-white{% else %}text-surface-700 dark:text-gray-300{% endif %} truncate">
+                        {{ other_user.display_name }}
+                    </h3>
+                    <span class="text-xs text-surface-500 flex-shrink-0 ml-2">
+                        {{ conv.last_message.created_at.strftime('%b %d') if conv.last_message else '' }}
+                    </span>
+                </div>
+                <p class="text-sm {% if unread > 0 %}text-surface-700 dark:text-gray-300{% else %}text-surface-500{% endif %} truncate mt-0.5">
+                    {% if conv.last_message %}
+                        {% if conv.last_message.sender_id == current_user.id %}
+                            <span class="text-surface-400">You: </span>
+                        {% endif %}
+                        {{ conv.last_message.content[:50] }}{% if conv.last_message.content|length > 50 %}...{% endif %}
+                    {% else %}
+                        <span class="text-amber-600 dark:text-amber-400">New match! Say hello 👋</span>
+                    {% endif %}
+                </p>
+            </div>
+            
+            <i data-lucide="chevron-right" class="w-5 h-5 text-surface-400 flex-shrink-0 ml-2"></i>
+        </a>
+        {% endfor %}
+    </div>
+    
+    {% else %}
+    <!-- Empty State -->
+    <div class="text-center py-16 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl">
+        <div class="w-20 h-20 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i data-lucide="message-circle" class="w-10 h-10 text-amber-600 dark:text-amber-400"></i>
+        </div>
+        <h3 class="font-display text-2xl font-semibold text-surface-900 dark:text-white mb-2">No Messages Yet</h3>
+        <p class="text-surface-600 dark:text-gray-400 max-w-md mx-auto mb-6">
+            Once you match with someone, you can start chatting here. Find your match today!
+        </p>
+        <a href="{{ url_for('discover.browse') }}" 
+           class="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full hover:from-amber-400 hover:to-amber-500 transition">
+            <i data-lucide="compass" class="w-4 h-4 mr-2"></i>
+            Start Discovering
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

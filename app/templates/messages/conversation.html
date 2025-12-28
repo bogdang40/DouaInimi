@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat with {{ other_user.display_name }} - {{ app_name }}{% endblock %}
+
+{% block main_class %}h-[calc(100vh-64px)] overflow-hidden{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    @keyframes typing-dot-1 { 0%, 100% { opacity: 0.3; } 33% { opacity: 1; } }
+    @keyframes typing-dot-2 { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    @keyframes typing-dot-3 { 0%, 100% { opacity: 0.3; } 66% { opacity: 1; } }
+    .typing-dots .dot-1 { animation: typing-dot-1 1s infinite; }
+    .typing-dots .dot-2 { animation: typing-dot-2 1s infinite; }
+    .typing-dots .dot-3 { animation: typing-dot-3 1s infinite; }
+    
+    /* Mobile-specific chat optimizations */
+    @media (max-width: 768px) {
+        /* Better touch scrolling */
+        #messages-container {
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+        
+        /* Ensure input is 16px to prevent iOS zoom */
+        #message-input {
+            font-size: 16px !important;
+        }
+        
+        /* Safe area padding for message input */
+        .message-input-wrapper {
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+    }
+    
+    /* Fix for iOS keyboard pushing content */
+    @supports (-webkit-touch-callout: none) {
+        .ios-keyboard-fix {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex h-full">
+    <!-- Sidebar - Conversation List (Desktop Only) -->
+    <div class="hidden lg:flex lg:flex-col w-72 xl:w-80 bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-white/5 flex-shrink-0">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-surface-200 dark:border-white/5 flex-shrink-0">
+            <h2 class="font-display text-xl font-semibold text-surface-900 dark:text-white">Messages</h2>
+        </div>
+        
+        <!-- Conversation List -->
+        <div class="flex-1 overflow-y-auto">
+            {% for m in all_matches %}
+            {% set other = m.get_other_user(current_user.id) %}
+            <a href="{{ url_for('messages.conversation', match_id=m.id) }}" 
+               class="flex items-center p-4 border-b border-surface-100 dark:border-white/5 hover:bg-surface-50 dark:hover:bg-white/5 transition
+                      {% if m.id == match.id %}bg-amber-50 dark:bg-amber-500/10 border-l-4 border-l-amber-500{% endif %}">
+                <img src="{{ other.primary_photo_url }}" 
+                     alt="{{ other.display_name }}"
+                     class="w-12 h-12 rounded-full object-cover ring-2 ring-surface-200 dark:ring-white/10 flex-shrink-0">
+                <div class="ml-3 flex-1 min-w-0">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-medium text-surface-900 dark:text-white truncate">{{ other.display_name }}</h3>
+                        {% set unread = m.unread_count(current_user.id) %}
+                        {% if unread > 0 %}
+                        <span class="ml-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center flex-shrink-0">
+                            {{ unread if unread < 10 else '9+' }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-surface-500 dark:text-gray-400 truncate" id="sidebar-preview-{{ m.id }}">
+                        {% if m.last_message %}
+                            {{ m.last_message.content[:25] }}{% if m.last_message.content|length > 25 %}...{% endif %}
+                        {% else %}
+                            Say hello! 👋
+                        {% endif %}
+                    </p>
+                </div>
+            </a>
+            {% else %}
+            <div class="p-4 text-center text-surface-500 dark:text-gray-400">
+                <p class="text-sm">No conversations yet</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Main Chat Area -->
+    <div class="flex-1 flex flex-col min-w-0 bg-surface-50 dark:bg-surface-950">
+        <!-- Chat Header -->
+        <div class="bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-white/5 px-4 lg:px-6 py-3 flex items-center space-x-4 flex-shrink-0">
+            <a href="{{ url_for('messages.inbox') }}" class="text-surface-500 dark:text-gray-400 hover:text-surface-700 dark:hover:text-white lg:hidden">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </a>
+            <a href="{{ url_for('profile.view_user', user_id=other_user.id) }}" class="flex items-center space-x-3 flex-1 min-w-0">
+                <div class="relative">
+                    <img src="{{ other_user.primary_photo_url }}" 
+                         alt="{{ other_user.display_name }}"
+                         class="w-10 h-10 rounded-full object-cover ring-2 ring-surface-200 dark:ring-white/10 flex-shrink-0">
+                    <!-- Online indicator -->
+                    <span id="online-indicator" 
+                          class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-surface-900 {{ 'bg-green-500' if other_user.is_online else 'bg-gray-400' }}"></span>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="font-semibold text-surface-900 dark:text-white truncate">{{ other_user.display_name }}</h2>
+                    <p id="user-status" class="text-xs text-surface-500 dark:text-gray-400 truncate">
+                        <span id="typing-indicator" class="hidden text-amber-500 dark:text-amber-400">
+                            <span class="typing-dots">typing<span class="dot-1">.</span><span class="dot-2">.</span><span class="dot-3">.</span></span>
+                        </span>
+                        <span id="status-text">
+                            {% if other_user.is_online %}
+                            <span class="text-green-600 dark:text-green-400">Online now</span>
+                            {% else %}
+                            {{ other_user.online_status_text }}
+                            {% endif %}
+                        </span>
+                    </p>
+                </div>
+            </a>
+            <a href="{{ url_for('profile.view_user', user_id=other_user.id) }}" 
+               class="p-2 text-surface-500 dark:text-gray-400 hover:text-surface-700 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5 rounded-lg transition flex-shrink-0"
+               title="View Profile">
+                <i data-lucide="user" class="w-5 h-5"></i>
+            </a>
+        </div>
+        
+        <!-- Messages Area -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 lg:p-6">
+            {% if messages %}
+            <div id="messages-list" class="space-y-4 max-w-3xl mx-auto">
+                {% for message in messages %}
+                {% set is_mine = message.sender_id == current_user.id %}
+                <div class="flex {% if is_mine %}justify-end{% endif %}" data-message-id="{{ message.id }}">
+                    {% if not is_mine %}
+                    <img src="{{ other_user.primary_photo_url }}" 
+                         alt="{{ other_user.display_name }}"
+                         class="w-8 h-8 rounded-full object-cover mr-2 flex-shrink-0 self-end">
+                    {% endif %}
+                    <div class="max-w-[70%]">
+                        <div class="px-4 py-2.5 rounded-2xl {% if is_mine %}bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-br-sm{% else %}bg-white dark:bg-surface-800 border border-surface-200 dark:border-white/10 text-surface-800 dark:text-gray-200 rounded-bl-sm shadow-sm{% endif %}">
+                            <p class="text-sm whitespace-pre-wrap break-words">{{ message.content }}</p>
+                        </div>
+                        <p class="text-xs text-surface-400 mt-1 {% if is_mine %}text-right flex items-center justify-end gap-1{% endif %}">
+                            {{ message.created_at.strftime('%I:%M %p') }}
+                            {% if is_mine %}
+                            <!-- Read Receipt -->
+                            {% if message.is_read %}
+                            <span class="text-blue-400" title="Read {{ message.read_at.strftime('%I:%M %p') if message.read_at else '' }}">
+                                <svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12l5 5L17 6M7 12l5 5L23 6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                            {% else %}
+                            <span class="text-white/60" title="Sent">
+                                <svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                            {% endif %}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div id="messages-list" class="space-y-4 max-w-3xl mx-auto">
+                <div id="empty-state" class="flex flex-col items-center justify-center py-16">
+                    <div class="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mb-4">
+                        <span class="text-3xl">💕</span>
+                    </div>
+                    <h3 class="font-display text-xl font-semibold text-surface-900 dark:text-white mb-2">It's a Match!</h3>
+                    <p class="text-surface-500 dark:text-gray-400 text-center text-sm">
+                        Say something nice to start the conversation
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Message Input - Fixed at bottom with safe area -->
+        <div class="message-input-wrapper bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 p-4 flex-shrink-0">
+            <form id="message-form" class="flex items-end space-x-2 sm:space-x-3 max-w-3xl mx-auto">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="flex-1 min-w-0">
+                    <textarea id="message-input"
+                              name="content" 
+                              rows="1"
+                              autocomplete="off"
+                              autocorrect="on"
+                              spellcheck="true"
+                              class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-xl text-surface-900 dark:text-white placeholder-surface-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none text-base"
+                              placeholder="Type a message..."
+                              required></textarea>
+                </div>
+                <button type="submit" 
+                        id="send-btn"
+                        class="flex-shrink-0 p-2.5 sm:p-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl hover:from-amber-400 hover:to-amber-500 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Profile Sidebar (Desktop XL Only) -->
+    <div class="hidden xl:flex xl:flex-col w-72 bg-white dark:bg-surface-900 border-l border-surface-200 dark:border-white/5 flex-shrink-0">
+        <div class="p-6 text-center border-b border-surface-200 dark:border-white/5 flex-shrink-0">
+            <img src="{{ other_user.primary_photo_url }}" 
+                 alt="{{ other_user.display_name }}"
+                 class="w-20 h-20 rounded-full object-cover mx-auto ring-4 ring-surface-200 dark:ring-white/10 mb-3">
+            <h3 class="font-display text-lg font-semibold text-surface-900 dark:text-white">
+                {{ other_user.display_name }}{% if other_user.profile and other_user.profile.age %}, {{ other_user.profile.age }}{% endif %}
+            </h3>
+            {% if other_user.profile %}
+            <p class="text-sm text-surface-500 dark:text-gray-400">
+                {{ other_user.profile.city }}{% if other_user.profile.state_province %}, {{ other_user.profile.state_province }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+        
+        {% if other_user.profile %}
+        <div class="flex-1 overflow-y-auto p-4">
+            <!-- Quick Info -->
+            <div class="mb-4">
+                <h4 class="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">About</h4>
+                <div class="space-y-2 text-sm">
+                    {% if other_user.profile.denomination %}
+                    <div class="flex items-center">
+                        <span class="w-5 text-center">✝️</span>
+                        <span class="ml-2 text-surface-700 dark:text-gray-300">{{ dict(config['DENOMINATIONS']).get(other_user.profile.denomination, other_user.profile.denomination) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if other_user.profile.speaks_romanian %}
+                    <div class="flex items-center">
+                        <span class="w-5 text-center">🇷🇴</span>
+                        <span class="ml-2 text-surface-700 dark:text-gray-300">{{ other_user.profile.get_speaks_romanian_display() }}</span>
+                    </div>
+                    {% endif %}
+                    {% if other_user.profile.occupation %}
+                    <div class="flex items-center">
+                        <span class="w-5 text-center">💼</span>
+                        <span class="ml-2 text-surface-700 dark:text-gray-300">{{ other_user.profile.occupation }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% if other_user.profile.bio %}
+            <div>
+                <h4 class="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">Bio</h4>
+                <p class="text-sm text-surface-600 dark:text-gray-400 leading-relaxed">
+                    {{ other_user.profile.bio[:180] }}{% if other_user.profile.bio|length > 180 %}...{% endif %}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <div class="p-4 border-t border-surface-200 dark:border-white/5 flex-shrink-0">
+            <a href="{{ url_for('profile.view_user', user_id=other_user.id) }}" 
+               class="block w-full text-center px-4 py-2 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-lg text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10 transition text-sm">
+                View Full Profile
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const matchId = {{ match.id }};
+    const currentUserId = {{ current_user.id }};
+    const otherUserPhoto = "{{ other_user.primary_photo_url }}";
+    const csrfToken = "{{ csrf_token() }}";
+    
+    const messagesContainer = document.getElementById('messages-container');
+    const messagesList = document.getElementById('messages-list');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const emptyState = document.getElementById('empty-state');
+    
+    // Auto-resize textarea
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+    
+    // Scroll to bottom
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    // Initial scroll
+    scrollToBottom();
+    
+    // Add message to UI
+    function addMessage(content, isMine, time) {
+        // Remove empty state if present
+        if (emptyState) {
+            emptyState.remove();
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `flex ${isMine ? 'justify-end' : ''}`;
+        
+        let html = '';
+        if (!isMine) {
+            html += `<img src="${otherUserPhoto}" alt="" class="w-8 h-8 rounded-full object-cover mr-2 flex-shrink-0 self-end">`;
+        }
+        
+        html += `
+            <div class="max-w-[70%]">
+                <div class="px-4 py-2.5 rounded-2xl ${isMine 
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-br-sm' 
+                    : 'bg-white dark:bg-surface-800 border border-surface-200 dark:border-white/10 text-surface-800 dark:text-gray-200 rounded-bl-sm shadow-sm'}">
+                    <p class="text-sm whitespace-pre-wrap break-words">${escapeHtml(content)}</p>
+                </div>
+                <p class="text-xs text-surface-400 mt-1 ${isMine ? 'text-right' : ''}">${time}</p>
+            </div>
+        `;
+        
+        messageDiv.innerHTML = html;
+        messagesList.appendChild(messageDiv);
+        scrollToBottom();
+    }
+    
+    // Escape HTML to prevent XSS
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Handle form submit
+    messageForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const content = messageInput.value.trim();
+        if (!content) return;
+        
+        // Disable button while sending
+        sendBtn.disabled = true;
+        
+        try {
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('csrf_token', csrfToken);
+            
+            const response = await fetch(`/messages/${matchId}/send-ajax`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Add message to UI
+                addMessage(content, true, data.message.created_at);
+                
+                // Clear input
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                
+                // Update sidebar preview
+                const sidebarPreview = document.getElementById(`sidebar-preview-${matchId}`);
+                if (sidebarPreview) {
+                    sidebarPreview.textContent = content.substring(0, 25) + (content.length > 25 ? '...' : '');
+                }
+            } else {
+                console.error('Failed to send message:', data.error);
+                alert('Failed to send message. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            alert('Failed to send message. Please try again.');
+        } finally {
+            sendBtn.disabled = false;
+            messageInput.focus();
+        }
+    });
+    
+    // Handle Enter key (send on Enter, new line on Shift+Enter)
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            messageForm.dispatchEvent(new Event('submit'));
+        }
+    });
+    
+    // Typing indicator elements
+    const typingIndicator = document.getElementById('typing-indicator');
+    const statusText = document.getElementById('status-text');
+    const onlineIndicator = document.getElementById('online-indicator');
+    let typingTimeout = null;
+    let isTyping = false;
+    
+    // Socket.IO for real-time messages and typing (if available)
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        
+        socket.on('connect', function() {
+            socket.emit('join_conversation', { match_id: matchId });
+        });
+        
+        socket.on('new_message', function(data) {
+            // Only add if from other user (we already added our own)
+            if (data.sender_id !== currentUserId && data.match_id === matchId) {
+                addMessage(data.content, false, data.created_at);
+                
+                // Mark as read
+                socket.emit('mark_read', { match_id: matchId });
+                
+                // Hide typing indicator when message received
+                typingIndicator.classList.add('hidden');
+                statusText.classList.remove('hidden');
+            }
+        });
+        
+        // Receive typing status from other user
+        socket.on('user_typing', function(data) {
+            if (data.match_id === matchId && data.user_id !== currentUserId) {
+                if (data.is_typing) {
+                    typingIndicator.classList.remove('hidden');
+                    statusText.classList.add('hidden');
+                } else {
+                    typingIndicator.classList.add('hidden');
+                    statusText.classList.remove('hidden');
+                }
+            }
+        });
+        
+        // Receive online status updates
+        socket.on('user_online', function(data) {
+            if (data.user_id === {{ other_user.id }}) {
+                if (data.is_online) {
+                    onlineIndicator.classList.remove('bg-gray-400');
+                    onlineIndicator.classList.add('bg-green-500');
+                    statusText.innerHTML = '<span class="text-green-600 dark:text-green-400">Online now</span>';
+                } else {
+                    onlineIndicator.classList.remove('bg-green-500');
+                    onlineIndicator.classList.add('bg-gray-400');
+                    statusText.textContent = data.last_seen || 'Offline';
+                }
+            }
+        });
+        
+        // Emit typing status when user types
+        messageInput.addEventListener('input', function() {
+            if (!isTyping) {
+                isTyping = true;
+                socket.emit('typing', { match_id: matchId, is_typing: true });
+            }
+            
+            // Clear existing timeout
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+            }
+            
+            // Set timeout to stop typing
+            typingTimeout = setTimeout(function() {
+                isTyping = false;
+                socket.emit('typing', { match_id: matchId, is_typing: false });
+            }, 2000);
+        });
+        
+        // Stop typing when form is submitted
+        messageForm.addEventListener('submit', function() {
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+            }
+            isTyping = false;
+            socket.emit('typing', { match_id: matchId, is_typing: false });
+        });
+    }
+    
+    // Re-init icons
+    lucide.createIcons();
+})();
+</script>
+{% endblock %}

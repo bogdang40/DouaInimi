@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ user.display_name }} - Admin - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-surface-50 dark:bg-surface-950 py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <a href="{{ url_for('admin.users') }}" class="text-sm text-surface-500 dark:text-gray-400 hover:text-surface-700 dark:hover:text-white mb-2 inline-flex items-center">
+                <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>
+                Back to Users
+            </a>
+            <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">User Details</h1>
+        </div>
+        
+        <!-- User Profile Card -->
+        <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl overflow-hidden mb-6">
+            <div class="p-6 flex flex-col sm:flex-row items-start gap-6">
+                <img src="{{ user.primary_photo_url }}" 
+                     alt="{{ user.display_name }}"
+                     class="w-24 h-24 rounded-xl object-cover flex-shrink-0">
+                <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h2 class="font-display text-2xl font-bold text-surface-900 dark:text-white">
+                                {{ user.display_name }}
+                                {% if user.profile and user.profile.age %}, {{ user.profile.age }}{% endif %}
+                            </h2>
+                            <p class="text-surface-500 dark:text-gray-400">{{ user.email }}</p>
+                            {% if user.profile %}
+                            <p class="text-surface-600 dark:text-gray-400 text-sm mt-1">
+                                {{ user.profile.city }}{% if user.profile.state_province %}, {{ user.profile.state_province }}{% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            {% if user.is_admin %}
+                            <span class="inline-flex px-3 py-1 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 text-sm rounded-full">Admin</span>
+                            {% endif %}
+                            {% if user.is_verified %}
+                            <span class="inline-flex px-3 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-sm rounded-full">Verified</span>
+                            {% else %}
+                            <span class="inline-flex px-3 py-1 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-sm rounded-full">Unverified</span>
+                            {% endif %}
+                            {% if user.is_premium %}
+                            <span class="inline-flex px-3 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-sm rounded-full">Premium</span>
+                            {% endif %}
+                            {% if not user.is_active %}
+                            <span class="inline-flex px-3 py-1 bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 text-sm rounded-full">Suspended</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if user.profile and user.profile.bio %}
+                    <p class="mt-4 text-surface-600 dark:text-gray-400 text-sm">{{ user.profile.bio[:300] }}{% if user.profile.bio|length > 300 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Stats -->
+            <div class="grid grid-cols-4 border-t border-surface-200 dark:border-white/10">
+                <div class="p-4 text-center border-r border-surface-200 dark:border-white/10">
+                    <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ matches_count }}</p>
+                    <p class="text-xs text-surface-500 dark:text-gray-400">Matches</p>
+                </div>
+                <div class="p-4 text-center border-r border-surface-200 dark:border-white/10">
+                    <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ messages_sent }}</p>
+                    <p class="text-xs text-surface-500 dark:text-gray-400">Messages</p>
+                </div>
+                <div class="p-4 text-center border-r border-surface-200 dark:border-white/10">
+                    <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ reports_about|length }}</p>
+                    <p class="text-xs text-surface-500 dark:text-gray-400">Reports</p>
+                </div>
+                <div class="p-4 text-center">
+                    <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ reports_made }}</p>
+                    <p class="text-xs text-surface-500 dark:text-gray-400">Filed</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Details Grid -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <!-- Account Info -->
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <h3 class="font-semibold text-surface-900 dark:text-white mb-4">Account Info</h3>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">User ID</dt>
+                        <dd class="text-surface-900 dark:text-white font-mono">{{ user.id }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Joined</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.created_at.strftime('%B %d, %Y at %I:%M %p') }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Last Login</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'Never' }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Last Active</dt>
+                        <dd class="text-surface-900 dark:text-white">
+                            {% if user.is_online %}
+                            <span class="text-green-600 dark:text-green-400">Online now</span>
+                            {% else %}
+                            {{ user.online_status_text }}
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Email Verified</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.email_verified_at.strftime('%B %d, %Y') if user.email_verified_at else 'No' }}</dd>
+                    </div>
+                </dl>
+            </div>
+            
+            <!-- Profile Info -->
+            {% if user.profile %}
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <h3 class="font-semibold text-surface-900 dark:text-white mb-4">Profile Info</h3>
+                <dl class="space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Full Name</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.profile.first_name }} {{ user.profile.last_name or '' }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Gender</dt>
+                        <dd class="text-surface-900 dark:text-white capitalize">{{ user.profile.gender or 'Not set' }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Denomination</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ dict(config['DENOMINATIONS']).get(user.profile.denomination, user.profile.denomination or 'Not set') }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Romanian</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.profile.get_speaks_romanian_display() if user.profile.speaks_romanian else 'Not set' }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-surface-500 dark:text-gray-400">Photos</dt>
+                        <dd class="text-surface-900 dark:text-white">{{ user.photos|length }}</dd>
+                    </div>
+                </dl>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Reports About This User -->
+        {% if reports_about %}
+        <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl overflow-hidden mb-6">
+            <div class="p-5 border-b border-surface-200 dark:border-white/10">
+                <h3 class="font-semibold text-surface-900 dark:text-white">Reports About This User</h3>
+            </div>
+            <div class="divide-y divide-surface-200 dark:divide-white/10">
+                {% for report in reports_about %}
+                <a href="{{ url_for('admin.report_detail', report_id=report.id) }}" 
+                   class="block p-4 hover:bg-surface-50 dark:hover:bg-white/5 transition">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-surface-900 dark:text-white capitalize">{{ report.reason.replace('_', ' ') }}</p>
+                            <p class="text-sm text-surface-500 dark:text-gray-400">
+                                Reported by {{ report.reporter.display_name }} · {{ report.created_at.strftime('%b %d, %Y') }}
+                            </p>
+                        </div>
+                        <span class="inline-flex px-2 py-0.5 text-xs rounded-full
+                                     {% if report.status == 'pending' %}bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400
+                                     {% elif report.status == 'resolved' %}bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400
+                                     {% else %}bg-surface-100 dark:bg-white/10 text-surface-600 dark:text-gray-400{% endif %}">
+                            {{ report.status }}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Admin Actions -->
+        <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+            <h3 class="font-semibold text-surface-900 dark:text-white mb-4">Admin Actions</h3>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <!-- Toggle Active -->
+                <form action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition
+                                   {% if user.is_active %}
+                                   bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20
+                                   {% else %}
+                                   bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/20
+                                   {% endif %}">
+                        <i data-lucide="{{ 'ban' if user.is_active else 'check' }}" class="w-4 h-4 inline mr-1"></i>
+                        {{ 'Suspend' if user.is_active else 'Reactivate' }}
+                    </button>
+                </form>
+                
+                <!-- Toggle Verified -->
+                <form action="{{ url_for('admin.toggle_user_verified', user_id=user.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition
+                                   {% if user.is_verified %}
+                                   bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10
+                                   {% else %}
+                                   bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-500/20
+                                   {% endif %}">
+                        <i data-lucide="{{ 'x' if user.is_verified else 'check-circle' }}" class="w-4 h-4 inline mr-1"></i>
+                        {{ 'Unverify' if user.is_verified else 'Verify' }}
+                    </button>
+                </form>
+                
+                <!-- Toggle Premium -->
+                <form action="{{ url_for('admin.toggle_user_premium', user_id=user.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition
+                                   {% if user.is_premium %}
+                                   bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10
+                                   {% else %}
+                                   bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20
+                                   {% endif %}">
+                        <i data-lucide="crown" class="w-4 h-4 inline mr-1"></i>
+                        {{ 'Revoke Premium' if user.is_premium else 'Grant Premium' }}
+                    </button>
+                </form>
+                
+                <!-- Toggle Admin -->
+                <form action="{{ url_for('admin.toggle_user_admin', user_id=user.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="w-full py-2.5 px-4 rounded-lg text-sm font-medium transition
+                                   {% if user.is_admin %}
+                                   bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10
+                                   {% else %}
+                                   bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-500/20
+                                   {% endif %}">
+                        <i data-lucide="shield" class="w-4 h-4 inline mr-1"></i>
+                        {{ 'Revoke Admin' if user.is_admin else 'Grant Admin' }}
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Danger Zone -->
+            <div class="mt-6 pt-6 border-t border-surface-200 dark:border-white/10">
+                <h4 class="text-sm font-semibold text-red-600 dark:text-red-400 mb-3">Danger Zone</h4>
+                <form action="{{ url_for('admin.delete_user', user_id=user.id) }}" method="POST" 
+                      onsubmit="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" 
+                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                        <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i>
+                        Delete User Permanently
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

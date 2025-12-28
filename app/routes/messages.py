@@ -1,0 +1,343 @@
+"""Messaging routes with security hardening."""
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
+from flask_login import login_required, current_user
+from flask_socketio import emit, join_room, leave_room
+from app import socketio
+from app.extensions import db
+from app.models.match import Match
+from app.models.message import Message
+from app.forms.messages import MessageForm
+from app.utils.security import (
+    validate_message_content, 
+    sanitize_message,
+    validate_socket_user,
+    validate_socket_match_access,
+    log_security_event
+)
+
+messages_bp = Blueprint('messages', __name__)
+
+# Message limits
+MAX_MESSAGE_LENGTH = 5000
+MIN_MESSAGE_LENGTH = 1
+MAX_MESSAGES_PER_MINUTE = 30  # Rate limit
+
+
+@messages_bp.route('/')
+@login_required
+def inbox():
+    """Message inbox - list all conversations."""
+    matches = Match.get_user_matches(current_user.id)
+    
+    conversations = []
+    for match in matches:
+        other_user = match.get_other_user(current_user.id)
+        last_message = match.last_message
+        unread = match.unread_count(current_user.id)
+        
+        conversations.append({
+            'match': match,
+            'user': other_user,
+            'last_message': last_message,
+            'unread_count': unread,
+        })
+    
+    # Sort by last message time
+    conversations.sort(
+        key=lambda x: x['last_message'].created_at if x['last_message'] else x['match'].matched_at,
+        reverse=True
+    )
+    
+    return render_template('messages/inbox.html', conversations=conversations)
+
+
+@messages_bp.route('/<int:match_id>')
+@login_required
+def conversation(match_id):
+    """View messages in a conversation."""
+    match = Match.query.get_or_404(match_id)
+    
+    # Verify current user is part of this match
+    if match.user1_id != current_user.id and match.user2_id != current_user.id:
+        flash('Invalid conversation.', 'error')
+        return redirect(url_for('messages.inbox'))
+    
+    if not match.is_active:
+        flash('This conversation is no longer active.', 'info')
+        return redirect(url_for('messages.inbox'))
+    
+    other_user = match.get_other_user(current_user.id)
+    
+    # Mark messages as read
+    Message.mark_conversation_read(match_id, current_user.id)
+    
+    # Get messages
+    messages = Message.get_conversation(match_id, current_user.id)
+    
+    # Get all matches for sidebar
+    all_matches = Match.get_user_matches(current_user.id)
+    
+    form = MessageForm()
+    
+    return render_template('messages/conversation.html',
+                          match=match,
+                          other_user=other_user,
+                          messages=messages,
+                          all_matches=all_matches,
+                          form=form)
+
+
+@messages_bp.route('/<int:match_id>/send', methods=['POST'])
+@login_required
+def send_message(match_id):
+    """Send a message - POST endpoint with redirect."""
+    match = Match.query.get_or_404(match_id)
+    
+    # Verify current user is part of this match
+    if match.user1_id != current_user.id and match.user2_id != current_user.id:
+        flash('Invalid conversation.', 'error')
+        return redirect(url_for('messages.inbox'))
+    
+    if not match.is_active:
+        flash('This conversation is no longer active.', 'info')
+        return redirect(url_for('messages.inbox'))
+    
+    form = MessageForm()
+    
+    if form.validate_on_submit():
+        content = form.content.data.strip()
+        
+        if content:
+            message = Message.send_message(
+                match_id=match_id,
+                sender_id=current_user.id,
+                content=content
+            )
+            
+            # Emit socket event for real-time update
+            socketio.emit('new_message', {
+                'match_id': match_id,
+                'message_id': message.id,
+                'sender_id': current_user.id,
+                'sender_name': current_user.display_name,
+                'sender_photo': current_user.primary_photo_url,
+                'content': message.content,
+                'created_at': message.created_at.strftime('%I:%M %p'),
+            }, room=f'match_{match_id}')
+    
+    # POST-Redirect-GET: Always redirect after POST to prevent duplicate submissions
+    return redirect(url_for('messages.conversation', match_id=match_id))
+
+
+@messages_bp.route('/<int:match_id>/send-ajax', methods=['POST'])
+@login_required  
+def send_message_ajax(match_id):
+    """Send a message via AJAX - returns JSON with security validation."""
+    match = Match.query.get_or_404(match_id)
+    
+    # Authorization: Verify current user is part of this match
+    if match.user1_id != current_user.id and match.user2_id != current_user.id:
+        log_security_event('unauthorized_message_attempt', {
+            'match_id': match_id,
+            'attempted_by': current_user.id
+        })
+        return jsonify({'error': 'Invalid conversation'}), 403
+    
+    if not match.is_active:
+        return jsonify({'error': 'Conversation not active'}), 403
+    
+    # Check if other user has blocked current user
+    other_user = match.get_other_user(current_user.id)
+    if current_user.is_blocked_by(other_user):
+        return jsonify({'error': 'Cannot send message'}), 403
+    
+    # Get and validate content
+    content = request.form.get('content', '')
+    
+    # Validate and sanitize message
+    is_valid, error_msg, sanitized_content = validate_message_content(
+        content, 
+        max_length=MAX_MESSAGE_LENGTH,
+        min_length=MIN_MESSAGE_LENGTH
+    )
+    
+    if not is_valid:
+        return jsonify({'error': error_msg}), 400
+    
+    # Save message with sanitized content
+    message = Message.send_message(
+        match_id=match_id,
+        sender_id=current_user.id,
+        content=sanitized_content
+    )
+    
+    # Emit socket event for real-time update to other user
+    # Note: Content is already sanitized, but we escape again for safety
+    socketio.emit('new_message', {
+        'match_id': match_id,
+        'message_id': message.id,
+        'sender_id': current_user.id,
+        'sender_name': current_user.display_name,
+        'sender_photo': current_user.primary_photo_url,
+        'content': message.content,  # Already sanitized
+        'created_at': message.created_at.strftime('%I:%M %p'),
+    }, room=f'match_{match_id}')
+    
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': message.id,
+            'content': message.content,
+            'created_at': message.created_at.strftime('%I:%M %p'),
+            'sender_id': current_user.id,
+        }
+    })
+
+
+# SocketIO events for real-time messaging with security
+@socketio.on('join_conversation')
+def on_join(data):
+    """Join a conversation room - with authorization check."""
+    from flask_login import current_user
+    
+    # Verify user is authenticated
+    if not current_user.is_authenticated:
+        emit('error', {'message': 'Not authenticated'})
+        return
+    
+    match_id = data.get('match_id')
+    if not match_id:
+        return
+    
+    # Verify user has access to this conversation
+    if not validate_socket_match_access(match_id, current_user.id):
+        log_security_event('unauthorized_room_join', {
+            'match_id': match_id,
+            'user_id': current_user.id
+        })
+        emit('error', {'message': 'Access denied'})
+        return
+    
+    room = f'match_{match_id}'
+    join_room(room)
+    emit('joined', {'match_id': match_id})
+
+
+@socketio.on('leave_conversation')
+def on_leave(data):
+    """Leave a conversation room."""
+    match_id = data.get('match_id')
+    if match_id:
+        room = f'match_{match_id}'
+        leave_room(room)
+
+
+@socketio.on('send_message')
+def on_message(data):
+    """Handle message sent via WebSocket with full security validation."""
+    from flask_login import current_user
+    
+    # Verify authentication
+    if not current_user.is_authenticated:
+        emit('error', {'message': 'Not authenticated'})
+        return
+    
+    match_id = data.get('match_id')
+    content = data.get('content', '')
+    
+    if not match_id:
+        emit('error', {'message': 'Invalid request'})
+        return
+    
+    # Validate and sanitize content
+    is_valid, error_msg, sanitized_content = validate_message_content(
+        content,
+        max_length=MAX_MESSAGE_LENGTH,
+        min_length=MIN_MESSAGE_LENGTH
+    )
+    
+    if not is_valid:
+        emit('error', {'message': error_msg})
+        return
+    
+    # Verify user is part of match
+    match = Match.query.get(match_id)
+    if not match or (match.user1_id != current_user.id and match.user2_id != current_user.id):
+        log_security_event('unauthorized_socket_message', {
+            'match_id': match_id,
+            'user_id': current_user.id
+        })
+        emit('error', {'message': 'Access denied'})
+        return
+    
+    # Check if match is active
+    if not match.is_active:
+        emit('error', {'message': 'Conversation not active'})
+        return
+    
+    # Check if blocked
+    other_user = match.get_other_user(current_user.id)
+    if current_user.is_blocked_by(other_user):
+        emit('error', {'message': 'Cannot send message'})
+        return
+    
+    # Save message with sanitized content
+    message = Message.send_message(
+        match_id=match_id,
+        sender_id=current_user.id,
+        content=sanitized_content
+    )
+    
+    # Emit to room
+    emit('new_message', {
+        'match_id': match_id,
+        'message_id': message.id,
+        'sender_id': current_user.id,
+        'sender_name': current_user.display_name,
+        'sender_photo': current_user.primary_photo_url,
+        'content': message.content,
+        'created_at': message.created_at.strftime('%I:%M %p'),
+    }, room=f'match_{match_id}')
+
+
+@socketio.on('mark_read')
+def on_mark_read(data):
+    """Mark messages as read - with auth check."""
+    from flask_login import current_user
+    
+    if not current_user.is_authenticated:
+        return
+    
+    match_id = data.get('match_id')
+    if not match_id:
+        return
+    
+    # Verify access before marking
+    if validate_socket_match_access(match_id, current_user.id):
+        Message.mark_conversation_read(match_id, current_user.id)
+
+
+@socketio.on('typing')
+def on_typing(data):
+    """Handle typing indicator - with auth check."""
+    from flask_login import current_user
+    
+    if not current_user.is_authenticated:
+        return
+    
+    match_id = data.get('match_id')
+    is_typing = data.get('is_typing', False)
+    
+    if not match_id:
+        return
+    
+    # Verify user is part of match before broadcasting
+    if not validate_socket_match_access(match_id, current_user.id):
+        return
+    
+    # Emit typing status to room (exclude self)
+    emit('user_typing', {
+        'match_id': match_id,
+        'user_id': current_user.id,
+        'is_typing': bool(is_typing),  # Ensure boolean
+    }, room=f'match_{match_id}', include_self=False)

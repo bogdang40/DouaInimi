@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Your Email - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 py-12 bg-surface-50 dark:bg-transparent">
+    <div class="w-full max-w-md text-center">
+        <!-- Card -->
+        <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl p-8 shadow-xl dark:shadow-2xl">
+            <!-- Icon -->
+            <div class="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <i data-lucide="mail" class="w-10 h-10 text-white"></i>
+            </div>
+            
+            <!-- Header -->
+            <h1 class="font-display text-2xl font-bold text-surface-900 dark:text-white mb-2">
+                Check Your Email
+            </h1>
+            <p class="text-surface-600 dark:text-gray-400 mb-6">
+                We've sent a verification link to:<br>
+                <strong class="text-surface-900 dark:text-white">{{ current_user.email }}</strong>
+            </p>
+            
+            <!-- Instructions -->
+            <div class="bg-surface-50 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-4 mb-6 text-left">
+                <h3 class="font-medium text-surface-900 dark:text-white mb-2">What's next?</h3>
+                <ol class="text-sm text-surface-600 dark:text-gray-400 space-y-2">
+                    <li class="flex items-start">
+                        <span class="w-5 h-5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">1</span>
+                        <span>Open the email from Două Inimi</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="w-5 h-5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">2</span>
+                        <span>Click the verification link</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="w-5 h-5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full flex items-center justify-center text-xs font-bold mr-2 flex-shrink-0">3</span>
+                        <span>Start discovering matches!</span>
+                    </li>
+                </ol>
+            </div>
+            
+            <!-- Resend button -->
+            <form action="{{ url_for('auth.resend_verification') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <p class="text-sm text-surface-500 dark:text-gray-400 mb-3">
+                    Didn't receive the email?
+                </p>
+                <button type="submit" 
+                        class="w-full py-3 px-4 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 text-surface-700 dark:text-gray-300 font-medium rounded-xl hover:bg-surface-200 dark:hover:bg-white/10 transition">
+                    Resend Verification Email
+                </button>
+            </form>
+            
+            <!-- Check spam notice -->
+            <p class="text-xs text-surface-400 dark:text-gray-500 mt-4">
+                Check your spam folder if you don't see the email
+            </p>
+        </div>
+        
+        <!-- Logout link -->
+        <p class="mt-6 text-sm text-surface-500 dark:text-gray-400">
+            Wrong email? 
+            <a href="{{ url_for('auth.logout') }}" class="text-amber-600 dark:text-amber-400 hover:underline">
+                Sign out
+            </a> 
+            and register again.
+        </p>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-surface-50 dark:bg-surface-950 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Admin Dashboard</h1>
+            <p class="mt-1 text-surface-600 dark:text-gray-400">Monitor and manage {{ app_name }}</p>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="mb-8 flex flex-wrap gap-3">
+            <a href="{{ url_for('admin.users') }}" 
+               class="inline-flex items-center px-4 py-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-white/10 transition">
+                <i data-lucide="users" class="w-4 h-4 mr-2"></i>
+                Manage Users
+            </a>
+            <a href="{{ url_for('admin.reports') }}" 
+               class="inline-flex items-center px-4 py-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300 hover:bg-surface-50 dark:hover:bg-white/10 transition">
+                <i data-lucide="flag" class="w-4 h-4 mr-2"></i>
+                View Reports
+                {% if pending_reports > 0 %}
+                <span class="ml-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{{ pending_reports }}</span>
+                {% endif %}
+            </a>
+        </div>
+        
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <!-- Total Users -->
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-surface-500 dark:text-gray-400">Total Users</p>
+                        <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ total_users }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 dark:bg-blue-500/20 rounded-full flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6 text-blue-600 dark:text-blue-400"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-surface-500 dark:text-gray-500 mt-2">
+                    +{{ new_users_today }} today · +{{ new_users_week }} this week
+                </p>
+            </div>
+            
+            <!-- Active Now -->
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-surface-500 dark:text-gray-400">Active Now</p>
+                        <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ active_users }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                        </span>
+                    </div>
+                </div>
+                <p class="text-xs text-surface-500 dark:text-gray-500 mt-2">
+                    {{ verified_users }} verified users
+                </p>
+            </div>
+            
+            <!-- Total Matches -->
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-surface-500 dark:text-gray-400">Total Matches</p>
+                        <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ total_matches }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center">
+                        <i data-lucide="heart" class="w-6 h-6 text-red-600 dark:text-red-400"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-surface-500 dark:text-gray-500 mt-2">
+                    +{{ new_matches_today }} new today
+                </p>
+            </div>
+            
+            <!-- Messages -->
+            <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-surface-500 dark:text-gray-400">Messages</p>
+                        <p class="text-2xl font-bold text-surface-900 dark:text-white">{{ total_messages }}</p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 dark:bg-purple-500/20 rounded-full flex items-center justify-center">
+                        <i data-lucide="message-circle" class="w-6 h-6 text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-surface-500 dark:text-gray-500 mt-2">
+                    {{ messages_today }} sent today
+                </p>
+            </div>
+        </div>
+        
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Recent Users -->
+            <div class="lg:col-span-2 bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl overflow-hidden">
+                <div class="p-5 border-b border-surface-200 dark:border-white/10 flex items-center justify-between">
+                    <h3 class="font-semibold text-surface-900 dark:text-white">Recent Users</h3>
+                    <a href="{{ url_for('admin.users') }}" class="text-sm text-amber-600 dark:text-amber-400 hover:underline">View all</a>
+                </div>
+                <div class="divide-y divide-surface-200 dark:divide-white/10">
+                    {% for user in recent_users %}
+                    <a href="{{ url_for('admin.user_detail', user_id=user.id) }}" 
+                       class="flex items-center p-4 hover:bg-surface-50 dark:hover:bg-white/5 transition">
+                        <img src="{{ user.primary_photo_url }}" 
+                             alt="{{ user.display_name }}"
+                             class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                        <div class="ml-3 flex-1 min-w-0">
+                            <p class="font-medium text-surface-900 dark:text-white truncate">{{ user.display_name }}</p>
+                            <p class="text-sm text-surface-500 dark:text-gray-400 truncate">{{ user.email }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-surface-500 dark:text-gray-400">
+                                {{ user.created_at.strftime('%b %d, %Y') }}
+                            </p>
+                            <div class="flex space-x-1 justify-end mt-1">
+                                {% if user.is_verified %}
+                                <span class="w-4 h-4 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center" title="Verified">
+                                    <i data-lucide="check" class="w-2.5 h-2.5 text-green-600 dark:text-green-400"></i>
+                                </span>
+                                {% endif %}
+                                {% if user.is_premium %}
+                                <span class="w-4 h-4 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center" title="Premium">
+                                    <i data-lucide="crown" class="w-2.5 h-2.5 text-amber-600 dark:text-amber-400"></i>
+                                </span>
+                                {% endif %}
+                                {% if not user.is_active %}
+                                <span class="w-4 h-4 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center" title="Suspended">
+                                    <i data-lucide="ban" class="w-2.5 h-2.5 text-red-600 dark:text-red-400"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    {% else %}
+                    <div class="p-8 text-center text-surface-500 dark:text-gray-400">
+                        No users yet
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Demographics -->
+            <div class="space-y-6">
+                <!-- Denomination Breakdown -->
+                <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                    <h3 class="font-semibold text-surface-900 dark:text-white mb-4">Denominations</h3>
+                    <div class="space-y-3">
+                        {% for denom, count in denomination_stats if denom %}
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-surface-600 dark:text-gray-400 capitalize">{{ denom.replace('_', ' ') }}</span>
+                                <span class="text-surface-900 dark:text-white font-medium">{{ count }}</span>
+                            </div>
+                            <div class="h-2 bg-surface-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-teal-500 to-teal-600 rounded-full" 
+                                     style="width: {{ (count / total_users * 100) if total_users > 0 else 0 }}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Gender Breakdown -->
+                <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl p-5">
+                    <h3 class="font-semibold text-surface-900 dark:text-white mb-4">Gender Distribution</h3>
+                    <div class="flex space-x-4">
+                        {% for gender, count in gender_stats if gender %}
+                        <div class="flex-1 text-center">
+                            <div class="w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center
+                                        {% if gender == 'male' %}bg-blue-100 dark:bg-blue-500/20
+                                        {% else %}bg-pink-100 dark:bg-pink-500/20{% endif %}">
+                                <i data-lucide="user" class="w-6 h-6 {% if gender == 'male' %}text-blue-600 dark:text-blue-400{% else %}text-pink-600 dark:text-pink-400{% endif %}"></i>
+                            </div>
+                            <p class="text-lg font-bold text-surface-900 dark:text-white">{{ count }}</p>
+                            <p class="text-xs text-surface-500 dark:text-gray-400 capitalize">{{ gender }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Pending Reports Alert -->
+                {% if pending_reports > 0 %}
+                <div class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-5">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600 dark:text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="font-medium text-red-800 dark:text-red-300">{{ pending_reports }} Pending Report{{ 's' if pending_reports != 1 }}</p>
+                            <p class="text-sm text-red-600 dark:text-red-400">Requires your attention</p>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('admin.reports') }}" 
+                       class="mt-4 block w-full text-center py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm">
+                        Review Reports
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

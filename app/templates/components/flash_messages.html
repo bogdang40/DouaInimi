@@ -1,0 +1,71 @@
+<!-- Flash Messages - Light/Dark Theme -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="fixed top-20 right-4 z-50 space-y-2 max-w-md" id="flash-container">
+            {% for category, message in messages %}
+                <div class="flash-message flex items-start space-x-3 p-4 rounded-xl shadow-lg border backdrop-blur-sm
+                    {% if category == 'error' %}
+                        bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30
+                    {% elif category == 'success' %}
+                        bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30
+                    {% elif category == 'warning' %}
+                        bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30
+                    {% else %}
+                        bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/30
+                    {% endif %}
+                    animate-slide-in"
+                    onclick="this.remove()">
+                    <div class="flex-shrink-0
+                        {% if category == 'error' %}text-red-600 dark:text-red-400
+                        {% elif category == 'success' %}text-teal-600 dark:text-teal-400
+                        {% elif category == 'warning' %}text-amber-600 dark:text-amber-400
+                        {% else %}text-sky-600 dark:text-sky-400{% endif %}">
+                        {% if category == 'error' %}
+                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+                        {% elif category == 'success' %}
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        {% elif category == 'warning' %}
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                        {% else %}
+                            <i data-lucide="info" class="w-5 h-5"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-surface-900 dark:text-white">{{ message }}</p>
+                    </div>
+                    <button type="button" class="flex-shrink-0 text-surface-400 dark:text-gray-400 hover:text-surface-600 dark:hover:text-white">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <style>
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            .animate-slide-in {
+                animation: slideIn 0.3s ease-out;
+            }
+        </style>
+        
+        <script>
+            setTimeout(function() {
+                const messages = document.querySelectorAll('.flash-message');
+                messages.forEach(function(msg) {
+                    msg.style.transition = 'opacity 0.3s, transform 0.3s';
+                    msg.style.opacity = '0';
+                    msg.style.transform = 'translateX(100%)';
+                    setTimeout(function() { msg.remove(); }, 300);
+                });
+            }, 5000);
+        </script>
+    {% endif %}
+{% endwith %}

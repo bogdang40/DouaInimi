@@ -1,0 +1,82 @@
+<!-- Profile Card Component - Light/Dark Theme -->
+{% macro render(user, show_actions=True) %}
+{% set profile = user.profile %}
+<div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden hover:shadow-lg dark:hover:bg-white/10 transition group">
+    <!-- Photo -->
+    <a href="{{ url_for('profile.view_user', user_id=user.id) }}" class="block relative">
+        <div class="aspect-[3/4] overflow-hidden">
+            <img src="{{ user.primary_photo_url }}" 
+                 alt="{{ user.display_name }}"
+                 class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+        </div>
+        <!-- Gradient overlay -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+        
+        <!-- Online status indicator -->
+        {% if user.is_online %}
+        <div class="absolute top-3 right-3 flex items-center bg-green-500/90 text-white text-xs px-2 py-0.5 rounded-full">
+            <span class="w-1.5 h-1.5 bg-white rounded-full mr-1 animate-pulse"></span>
+            Online
+        </div>
+        {% endif %}
+        
+        <!-- Quick info overlay -->
+        <div class="absolute bottom-0 left-0 right-0 p-4">
+            <h3 class="font-display text-xl font-semibold text-white">
+                {{ user.display_name }}{% if profile and profile.age %}, {{ profile.age }}{% endif %}
+            </h3>
+            {% if profile %}
+            <p class="text-sm text-white/80 flex items-center mt-1">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1"></i>
+                {{ profile.city }}{% if profile.state_province %}, {{ profile.state_province }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </a>
+    
+    <!-- Info & Tags -->
+    <div class="p-4">
+        {% if profile %}
+        <div class="flex flex-wrap gap-1.5 mb-4">
+            {% if profile.denomination %}
+            <span class="inline-flex items-center px-2 py-0.5 bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 rounded-full text-xs">
+                ✝️ {{ dict(config['DENOMINATIONS']).get(profile.denomination, profile.denomination)[:15] }}
+            </span>
+            {% endif %}
+            {% if profile.speaks_romanian %}
+            <span class="inline-flex items-center px-2 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 rounded-full text-xs">
+                🇷🇴 {{ profile.get_speaks_romanian_display() }}
+            </span>
+            {% endif %}
+            {% if profile.conservatism_level %}
+            <span class="inline-flex items-center px-2 py-0.5 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-full text-xs">
+                {{ profile.get_conservatism_display() }}
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Actions -->
+        {% if show_actions %}
+        <div class="flex space-x-2">
+            <form action="{{ url_for('discover.pass_user', user_id=user.id) }}" method="POST" class="flex-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" 
+                        class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 transition text-sm">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                    <span>Pass</span>
+                </button>
+            </form>
+            <form action="{{ url_for('discover.like_user', user_id=user.id) }}" method="POST" class="flex-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" 
+                        class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-400 hover:to-red-500 transition text-sm">
+                    <i data-lucide="heart" class="w-4 h-4"></i>
+                    <span>Like</span>
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}

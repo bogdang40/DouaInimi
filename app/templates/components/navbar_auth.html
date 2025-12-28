@@ -1,0 +1,171 @@
+<!-- Authenticated Navigation - Light/Dark Theme -->
+<nav class="glass sticky top-0 z-50 border-b border-surface-200 dark:border-white/5 bg-white/80 dark:bg-transparent">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+            <!-- Logo -->
+            <div class="flex items-center">
+                <a href="{{ url_for('main.dashboard') }}" class="flex items-center space-x-2 group">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="{{ app_name }}" class="h-10 w-auto group-hover:scale-110 transition-transform">
+                    <span class="font-display text-xl font-semibold text-surface-900 dark:text-white hidden sm:block">{{ app_name }}</span>
+                </a>
+            </div>
+            
+            <!-- Main Nav Links -->
+            <div class="hidden md:flex md:items-center md:space-x-1">
+                <a href="{{ url_for('main.dashboard') }}" 
+                   class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
+                          {% if request.endpoint == 'main.dashboard' %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="home" class="w-4 h-4"></i>
+                    <span>Home</span>
+                </a>
+                <a href="{{ url_for('discover.browse') }}" 
+                   class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
+                          {% if 'discover' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="compass" class="w-4 h-4"></i>
+                    <span>Discover</span>
+                </a>
+                <a href="{{ url_for('matches.list') }}" 
+                   class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition
+                          {% if 'matches' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="heart" class="w-4 h-4"></i>
+                    <span>Matches</span>
+                </a>
+                <a href="{{ url_for('messages.inbox') }}" 
+                   class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition relative
+                          {% if 'messages' in request.endpoint %}bg-amber-100 dark:bg-white/10 text-amber-700 dark:text-amber-400{% else %}text-surface-600 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-100 dark:hover:bg-white/5{% endif %}">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    <span>Messages</span>
+                    {% if total_unread_messages and total_unread_messages > 0 %}
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                        {{ total_unread_messages if total_unread_messages < 10 else '9+' }}
+                    </span>
+                    {% endif %}
+                </a>
+            </div>
+            
+            <!-- Right Side - Theme Toggle & Profile -->
+            <div class="flex items-center space-x-3">
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" 
+                        class="p-2 rounded-lg text-surface-600 dark:text-gray-300 hover:bg-surface-100 dark:hover:bg-white/5 transition"
+                        title="Toggle theme">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+                
+                <!-- Profile Dropdown -->
+                <div class="relative">
+                    <button onclick="toggleProfileMenu()" 
+                            class="flex items-center space-x-2 p-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-white/5 transition">
+                        <img src="{{ current_user.primary_photo_url }}" 
+                             alt="Profile" 
+                             class="w-9 h-9 rounded-full object-cover ring-2 ring-surface-200 dark:ring-white/20">
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-surface-500 dark:text-gray-400 hidden sm:block"></i>
+                    </button>
+                    
+                    <!-- Dropdown Menu -->
+                    <div id="profile-menu" 
+                         class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-surface-800 rounded-xl shadow-xl dark:shadow-2xl border border-surface-200 dark:border-white/10 py-2 z-50">
+                        <div class="px-4 py-3 border-b border-surface-100 dark:border-white/5">
+                            <p class="text-sm font-semibold text-surface-900 dark:text-white">{{ current_user.display_name }}</p>
+                            <p class="text-xs text-surface-500 dark:text-gray-400">{{ current_user.email }}</p>
+                        </div>
+                        
+                        <a href="{{ url_for('profile.view') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-surface-700 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-50 dark:hover:bg-white/5">
+                            <i data-lucide="user" class="w-4 h-4"></i>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="{{ url_for('profile.edit') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-surface-700 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-50 dark:hover:bg-white/5">
+                            <i data-lucide="edit" class="w-4 h-4"></i>
+                            <span>Edit Profile</span>
+                        </a>
+                        <a href="{{ url_for('profile.photos') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-surface-700 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-50 dark:hover:bg-white/5">
+                            <i data-lucide="image" class="w-4 h-4"></i>
+                            <span>My Photos</span>
+                        </a>
+                        
+                        <div class="border-t border-surface-100 dark:border-white/5 my-2"></div>
+                        
+                        <a href="{{ url_for('settings.index') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-surface-700 dark:text-gray-300 hover:text-surface-900 dark:hover:text-white hover:bg-surface-50 dark:hover:bg-white/5">
+                            <i data-lucide="settings" class="w-4 h-4"></i>
+                            <span>Settings</span>
+                        </a>
+                        
+                        {% if current_user.is_admin %}
+                        <div class="border-t border-surface-100 dark:border-white/5 my-2"></div>
+                        
+                        <a href="{{ url_for('admin.dashboard') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10">
+                            <i data-lucide="shield" class="w-4 h-4"></i>
+                            <span>Admin Panel</span>
+                        </a>
+                        {% endif %}
+                        
+                        <div class="border-t border-surface-100 dark:border-white/5 my-2"></div>
+                        
+                        <a href="{{ url_for('auth.logout') }}" 
+                           class="flex items-center space-x-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            <span>Sign Out</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mobile Bottom Navigation -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 z-50">
+        <div class="flex justify-around py-2">
+            <a href="{{ url_for('main.dashboard') }}" 
+               class="flex flex-col items-center p-2 {% if request.endpoint == 'main.dashboard' %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <i data-lucide="home" class="w-5 h-5"></i>
+                <span class="text-xs mt-1">Home</span>
+            </a>
+            <a href="{{ url_for('discover.browse') }}" 
+               class="flex flex-col items-center p-2 {% if 'discover' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <i data-lucide="compass" class="w-5 h-5"></i>
+                <span class="text-xs mt-1">Discover</span>
+            </a>
+            <a href="{{ url_for('matches.list') }}" 
+               class="flex flex-col items-center p-2 {% if 'matches' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <i data-lucide="heart" class="w-5 h-5"></i>
+                <span class="text-xs mt-1">Matches</span>
+            </a>
+            <a href="{{ url_for('messages.inbox') }}" 
+               class="flex flex-col items-center p-2 relative {% if 'messages' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                <span class="text-xs mt-1">Messages</span>
+                {% if total_unread_messages and total_unread_messages > 0 %}
+                <span class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
+                    {{ total_unread_messages if total_unread_messages < 10 else '9+' }}
+                </span>
+                {% endif %}
+            </a>
+            <a href="{{ url_for('profile.view') }}" 
+               class="flex flex-col items-center p-2 {% if 'profile' in request.endpoint %}text-amber-600 dark:text-amber-400{% else %}text-surface-500 dark:text-gray-400{% endif %}">
+                <i data-lucide="user" class="w-5 h-5"></i>
+                <span class="text-xs mt-1">Profile</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<script>
+function toggleProfileMenu() {
+    const menu = document.getElementById('profile-menu');
+    menu.classList.toggle('hidden');
+}
+
+document.addEventListener('click', function(event) {
+    const menu = document.getElementById('profile-menu');
+    const button = event.target.closest('button');
+    if (!button && !menu.contains(event.target)) {
+        menu.classList.add('hidden');
+    }
+});
+</script>

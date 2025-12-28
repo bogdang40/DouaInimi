@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0a19"/>
+      <stop offset="100%" style="stop-color:#1a0f2e"/>
+    </linearGradient>
+    <linearGradient id="heart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#f43f5e"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="38" fill="url(#bg)"/>
+  <!-- Two hearts representing "Două Inimi" -->
+  <g transform="translate(32, 48)">
+    <!-- Left heart -->
+    <path d="M45 20 C45 10, 32 5, 25 15 C18 5, 5 10, 5 20 C5 35, 25 50, 25 50 C25 50, 45 35, 45 20Z" 
+          fill="url(#heart)" opacity="0.9"/>
+    <!-- Right heart -->
+    <path d="M123 20 C123 10, 110 5, 103 15 C96 5, 83 10, 83 20 C83 35, 103 50, 103 50 C103 50, 123 35, 123 20Z" 
+          fill="url(#heart)" opacity="0.9"/>
+    <!-- Connection between hearts -->
+    <path d="M45 35 Q64 55, 83 35" stroke="url(#heart)" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+  <!-- App name -->
+  <text x="96" y="145" font-family="Georgia, serif" font-size="16" fill="#f59e0b" text-anchor="middle" font-weight="600">Două Inimi</text>
+</svg>
+

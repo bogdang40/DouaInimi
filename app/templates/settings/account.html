@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Settings - {{ app_name }}{% endblock %}
+
+{% block main_class %}pb-20 md:pb-0{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <a href="{{ url_for('settings.index') }}" class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6">
+        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i>
+        Back to Settings
+    </a>
+    
+    <h1 class="font-display text-2xl font-bold text-gray-900 mb-8">Account Settings</h1>
+    
+    <!-- Email Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 class="font-semibold text-gray-900 mb-4">Email Address</h2>
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-900">{{ current_user.email }}</p>
+                {% if current_user.is_verified %}
+                <p class="text-sm text-green-600 flex items-center mt-1">
+                    <i data-lucide="check-circle" class="w-4 h-4 mr-1"></i>
+                    Verified
+                </p>
+                {% else %}
+                <p class="text-sm text-yellow-600 flex items-center mt-1">
+                    <i data-lucide="alert-circle" class="w-4 h-4 mr-1"></i>
+                    Not verified
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Password Section -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 class="font-semibold text-gray-900 mb-4">Password</h2>
+        <p class="text-gray-600 mb-4">Change your password to keep your account secure.</p>
+        <a href="{{ url_for('settings.change_password') }}" 
+           class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+            <i data-lucide="key" class="w-4 h-4 mr-2"></i>
+            Change Password
+        </a>
+    </div>
+    
+    <!-- Account Status -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 class="font-semibold text-gray-900 mb-4">Account Status</h2>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-900">Account Type</p>
+                    <p class="text-sm text-gray-500">
+                        {% if current_user.is_premium %}
+                        Premium Member
+                        {% else %}
+                        Free Member
+                        {% endif %}
+                    </p>
+                </div>
+                {% if not current_user.is_premium %}
+                <span class="px-3 py-1 bg-romanian-yellow-100 text-romanian-yellow-700 rounded-full text-sm font-medium">
+                    Upgrade
+                </span>
+                {% endif %}
+            </div>
+            
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div>
+                    <p class="text-gray-900">Member Since</p>
+                    <p class="text-sm text-gray-500">{{ current_user.created_at.strftime('%B %d, %Y') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
