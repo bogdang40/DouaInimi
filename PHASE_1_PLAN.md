@@ -342,7 +342,7 @@ Azure will automatically:
 | **Discover (Grid)** | ✅ Complete | Browse profiles with Like/Pass |
 | **Discover (Swipe)** | ✅ Complete | Tinder-like card swiping interface |
 | **Search & Filters** | ✅ Complete | Filter by denomination, location, language, etc. |
-| **Matching System** | ✅ Complete | Mutual likes create matches, passes tracked |
+| **Matching System** | ✅ Complete | Mutual likes create matches, passes tracked, opposite-sex only |
 | **Messaging** | ✅ Complete | Real-time chat with Socket.IO |
 | **AJAX Messaging** | ✅ Complete | No page refresh, POST-Redirect-GET safe |
 | **Typing Indicators** | ✅ Complete | Real-time "typing..." display |
@@ -1100,14 +1100,32 @@ flask db upgrade
 
 ### Photo Storage Validation
 
-To verify Azure Blob Storage is working:
+**IMPORTANT: Enable Anonymous Blob Access (One-Time Setup)**
 
+The Azure Blob container is set to "Private" by default. For photos to display, you have two options:
+
+**Option A: Enable Public Access (Recommended for dating app)**
+1. Go to **Azure Portal** → Storage Account `douainimiphotos`
+2. Click **Configuration** (left menu)
+3. Set **"Allow Blob anonymous access"** to **Enabled**
+4. Click **Save**
+5. Go to **Containers** → `photos`
+6. Click **Change access level**
+7. Select **"Blob (anonymous read access for blobs only)"**
+8. Click **OK**
+
+**Option B: Use SAS Tokens (Already Implemented)**
+- New photo uploads automatically include SAS tokens (signed URLs)
+- Existing photos uploaded before this fix need re-upload or Option A
+
+**To verify Azure Blob Storage is working:**
 1. **Login to the app** at https://2inimi.com
 2. **Go to Profile → Photos**
-3. **Upload a test photo**
-4. **Check Azure Portal** → Storage Account `douainimiphotos` → Container `photos`
-5. **Verify the photo file appears** in the container
-6. **The photo URL should be** `https://douainimiphotos.blob.core.windows.net/photos/xxxxx.jpg`
+3. **Delete your old photo** (if any - it has no SAS token)
+4. **Upload a NEW test photo**
+5. The photo should display immediately
+6. **Check Azure Portal** → Storage Account `douainimiphotos` → Container `photos`
+7. **Verify the photo file appears** in the container
 
 If photos show `/static/uploads/...` instead, Azure Blob Storage isn't connected. Check:
 - `AZURE_STORAGE_CONNECTION_STRING` env var is set in Azure App Service
