@@ -24,7 +24,10 @@ def create_app(config_name=None):
     bcrypt.init_app(app)
     mail.init_app(app)
     csrf.init_app(app)
-    socketio.init_app(app, cors_allowed_origins="*")
+    
+    # Use threading mode for Socket.IO - works reliably with standard Gunicorn
+    # No need for eventlet/gevent which have compatibility issues on Azure
+    socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
     
     # Initialize rate limiter
     limiter = init_limiter(app)

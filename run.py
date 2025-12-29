@@ -1,9 +1,4 @@
 """Development server runner."""
-# Eventlet monkey-patching must be done FIRST, before any other imports
-# This is required for Flask-SocketIO to work with eventlet workers
-import eventlet
-eventlet.monkey_patch()
-
 import os
 import click
 

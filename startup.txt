@@ -1,2 +1,2 @@
-gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 1 --worker-class eventlet run:app
+gunicorn --bind=0.0.0.0:8000 --timeout 120 --workers 2 --threads 4 run:app
 
