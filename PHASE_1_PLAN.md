@@ -149,12 +149,19 @@ Use your GitHub credentials (bogdang40) when prompted.
 
 ### Step 4: Set Startup Command
 1. App Service → **Configuration** → **General settings** tab
-2. Startup Command:
-```bash
-gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
-```
+2. **Leave Startup Command EMPTY** - Let Azure auto-detect
+   - Azure will automatically run: `gunicorn 'run:app'`
+   - The `gunicorn.conf.py` file in the repo configures workers & threads
 3. Click **Save**
 4. Click **Restart** (top of page)
+
+**Performance Configuration (gunicorn.conf.py):**
+```python
+# Automatically picked up by Gunicorn
+workers = 2          # Number of worker processes
+threads = 4          # Threads per worker (for Socket.IO)
+timeout = 120        # Worker timeout
+```
 
 ### Step 5: Run Database Migrations (CRITICAL)
 After deployment completes (check Deployment Center for status):
@@ -989,11 +996,9 @@ git push -u origin main
 
 #### Step 3: Add Startup Command
 1. App Service → **Configuration** → **General settings**
-2. Startup Command:
-```bash
-gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 wsgi:app
-```
-3. Save
+2. **Leave Startup Command EMPTY** - Let Azure auto-detect
+3. The `gunicorn.conf.py` file configures: 2 workers, 4 threads each
+4. Save
 
 #### Step 4: Run Database Migrations
 After deployment completes:

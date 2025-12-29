@@ -27,7 +27,16 @@ def create_app(config_name=None):
     
     # Use threading mode for Socket.IO - works reliably with standard Gunicorn
     # No need for eventlet/gevent which have compatibility issues on Azure
-    socketio.init_app(app, cors_allowed_origins="*", async_mode='threading')
+    # Increase ping timeout to prevent premature disconnections with sync workers
+    socketio.init_app(
+        app, 
+        cors_allowed_origins="*", 
+        async_mode='threading',
+        ping_timeout=60,      # Wait 60 seconds for ping response
+        ping_interval=25,     # Send ping every 25 seconds
+        logger=False,         # Reduce logging noise
+        engineio_logger=False
+    )
     
     # Initialize rate limiter
     limiter = init_limiter(app)
