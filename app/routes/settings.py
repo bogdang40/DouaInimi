@@ -57,7 +57,13 @@ def preferences():
     profile = current_user.profile
     
     if form.validate_on_submit():
-        profile.looking_for_gender = form.looking_for_gender.data
+        # looking_for_gender is auto-set based on user's gender (opposite sex only)
+        # Conservative Christian platform - women see men, men see women
+        if profile.gender == 'female':
+            profile.looking_for_gender = 'male'
+        elif profile.gender == 'male':
+            profile.looking_for_gender = 'female'
+        
         profile.looking_for_age_min = form.looking_for_age_min.data
         profile.looking_for_age_max = form.looking_for_age_max.data
         profile.relationship_goal = form.relationship_goal.data or None
@@ -67,7 +73,6 @@ def preferences():
         return redirect(url_for('settings.preferences'))
     
     elif request.method == 'GET':
-        form.looking_for_gender.data = profile.looking_for_gender
         form.looking_for_age_min.data = profile.looking_for_age_min or 18
         form.looking_for_age_max.data = profile.looking_for_age_max or 99
         form.relationship_goal.data = profile.relationship_goal

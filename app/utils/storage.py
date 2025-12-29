@@ -2,6 +2,8 @@
 
 This module handles photo storage in Azure Blob Storage for production,
 with fallback to local filesystem for development.
+
+For private containers, SAS tokens are used to generate accessible URLs.
 """
 import os
 import uuid
@@ -25,6 +27,57 @@ def get_blob_service_client():
         return None
     except Exception as e:
         current_app.logger.error(f"Failed to connect to Azure Blob Storage: {e}")
+        return None
+
+
+def generate_sas_url(blob_name, container_name=None, expiry_hours=8760):
+    """Generate a SAS URL for a blob (default 1 year expiry for photos).
+    
+    Args:
+        blob_name: Name of the blob
+        container_name: Container name (defaults to config)
+        expiry_hours: Hours until SAS token expires (default 1 year)
+        
+    Returns:
+        str: SAS URL or None if failed
+    """
+    connection_string = current_app.config.get('AZURE_STORAGE_CONNECTION_STRING')
+    if not connection_string:
+        return None
+    
+    container_name = container_name or current_app.config.get('AZURE_STORAGE_CONTAINER', 'photos')
+    
+    try:
+        from azure.storage.blob import BlobServiceClient, generate_blob_sas, BlobSasPermissions
+        
+        blob_service = BlobServiceClient.from_connection_string(connection_string)
+        account_name = blob_service.account_name
+        
+        # Extract account key from connection string
+        account_key = None
+        for part in connection_string.split(';'):
+            if part.startswith('AccountKey='):
+                account_key = part.replace('AccountKey=', '')
+                break
+        
+        if not account_key:
+            current_app.logger.error("Could not extract account key from connection string")
+            return None
+        
+        # Generate SAS token with read permission
+        sas_token = generate_blob_sas(
+            account_name=account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            account_key=account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.utcnow() + timedelta(hours=expiry_hours)
+        )
+        
+        return f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
+        
+    except Exception as e:
+        current_app.logger.error(f"Failed to generate SAS URL: {e}")
         return None
 
 
@@ -69,11 +122,18 @@ def upload_photo_to_storage(file_data, filename, content_type='image/jpeg'):
                 overwrite=True
             )
             
-            # Return the public URL
-            account_name = blob_client.account_name
-            url = f"https://{account_name}.blob.core.windows.net/{container_name}/{filename}"
+            # Generate SAS URL for private container access
+            sas_url = generate_sas_url(filename, container_name)
             
-            current_app.logger.info(f"Uploaded photo to Azure Blob: {filename}")
+            if sas_url:
+                url = sas_url
+                current_app.logger.info(f"Uploaded photo to Azure Blob with SAS: {filename}")
+            else:
+                # Fallback to public URL (works if container has public access)
+                account_name = blob_client.account_name
+                url = f"https://{account_name}.blob.core.windows.net/{container_name}/{filename}"
+                current_app.logger.info(f"Uploaded photo to Azure Blob (public URL): {filename}")
+            
             return url, 'azure'
             
         except Exception as e:
