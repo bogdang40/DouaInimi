@@ -11,7 +11,7 @@ JPEG_QUALITY = 85              # Quality for JPEG compression
 MAX_FILE_SIZE_MB = 5           # Max file size in MB
 
 
-def process_uploaded_image(file, output_path, create_thumbnail=True):
+def process_uploaded_image(file, output_path=None, create_thumbnail=True):
     """
     Process an uploaded image:
     - Fix orientation based on EXIF
@@ -19,7 +19,14 @@ def process_uploaded_image(file, output_path, create_thumbnail=True):
     - Compress for web
     - Optionally create thumbnail
     
-    Returns: (success, error_message, thumbnail_path)
+    Args:
+        file: File-like object
+        output_path: Path to save file (if None, returns bytes)
+        create_thumbnail: Whether to create a thumbnail
+    
+    Returns: 
+        If output_path is provided: (success, error_message, thumbnail_path)
+        If output_path is None: (success, error_message, (image_bytes, thumbnail_bytes))
     """
     try:
         # Open image
@@ -42,7 +49,25 @@ def process_uploaded_image(file, output_path, create_thumbnail=True):
         # Resize if too large
         img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
         
-        # Save compressed image
+        # If no output path, return bytes (for Azure Blob Storage)
+        if output_path is None:
+            # Get main image bytes
+            img_buffer = BytesIO()
+            img.save(img_buffer, 'JPEG', quality=JPEG_QUALITY, optimize=True)
+            img_bytes = img_buffer.getvalue()
+            
+            # Get thumbnail bytes if requested
+            thumb_bytes = None
+            if create_thumbnail:
+                thumb = img.copy()
+                thumb.thumbnail(THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
+                thumb_buffer = BytesIO()
+                thumb.save(thumb_buffer, 'JPEG', quality=80, optimize=True)
+                thumb_bytes = thumb_buffer.getvalue()
+            
+            return True, None, (img_bytes, thumb_bytes)
+        
+        # Save to file path (legacy local storage)
         img.save(output_path, 'JPEG', quality=JPEG_QUALITY, optimize=True)
         
         # Create thumbnail if requested

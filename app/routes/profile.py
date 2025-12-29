@@ -11,6 +11,7 @@ from app.models.photo import Photo
 from app.forms.profile import ProfileForm, PhotoUploadForm
 from app.utils.image import process_uploaded_image, validate_image_file
 from app.utils.moderation import moderate_profile
+from app.utils.storage import upload_photo_to_storage, delete_photo_from_storage, generate_unique_filename
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -220,18 +221,14 @@ def photos():
                 flash(error_msg, 'error')
                 return redirect(url_for('profile.photos'))
             
-            # Generate unique filename (always save as JPEG after processing)
-            unique_filename = f"{uuid.uuid4().hex}.jpg"
+            # Generate unique filenames
+            unique_filename = generate_unique_filename(file.filename)
+            thumb_filename = generate_unique_filename(file.filename, prefix='thumb_')
             
-            # Create upload folder if it doesn't exist
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads')
-            os.makedirs(upload_folder, exist_ok=True)
-            
-            # Process and compress image
-            file_path = os.path.join(upload_folder, unique_filename)
-            success, error_msg, thumbnail_path = process_uploaded_image(
+            # Process image (get bytes, not file path)
+            success, error_msg, image_data = process_uploaded_image(
                 file, 
-                file_path, 
+                output_path=None,  # Return bytes instead of saving to file
                 create_thumbnail=True
             )
             
@@ -239,23 +236,31 @@ def photos():
                 flash(f'Error processing image: {error_msg}', 'error')
                 return redirect(url_for('profile.photos'))
             
+            img_bytes, thumb_bytes = image_data
+            
+            # Upload to Azure Blob Storage (or local fallback)
+            photo_url, storage_type = upload_photo_to_storage(img_bytes, unique_filename)
+            
+            thumbnail_url = None
+            if thumb_bytes:
+                thumbnail_url, _ = upload_photo_to_storage(thumb_bytes, thumb_filename)
+            
             # Create photo record
             is_primary = photo_count == 0  # First photo is primary
-            thumbnail_url = None
-            if thumbnail_path:
-                thumbnail_filename = os.path.basename(thumbnail_path)
-                thumbnail_url = f'/static/uploads/{thumbnail_filename}'
             
             photo = Photo(
                 user_id=current_user.id,
                 filename=unique_filename,
-                url=f'/static/uploads/{unique_filename}',
+                url=photo_url,
                 thumbnail_url=thumbnail_url,
                 is_primary=is_primary,
                 display_order=photo_count
             )
             db.session.add(photo)
             db.session.commit()
+            
+            storage_msg = "Azure Blob" if storage_type == 'azure' else "local"
+            current_app.logger.info(f"Photo uploaded to {storage_msg}: {unique_filename}")
             
             flash('Photo uploaded and optimized!', 'success')
             return redirect(url_for('profile.photos'))
@@ -272,13 +277,13 @@ def delete_photo(photo_id):
     """Delete a photo."""
     photo = Photo.query.filter_by(id=photo_id, user_id=current_user.id).first_or_404()
     
-    # Delete file from filesystem
+    # Delete file from storage (Azure Blob or local)
     try:
-        file_path = os.path.join(current_app.root_path, 'static', 'uploads', photo.filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-    except Exception:
-        pass  # Ignore file deletion errors
+        delete_photo_from_storage(photo.url)
+        if photo.thumbnail_url:
+            delete_photo_from_storage(photo.thumbnail_url)
+    except Exception as e:
+        current_app.logger.warning(f"Failed to delete photo file: {e}")
     
     was_primary = photo.is_primary
     db.session.delete(photo)

@@ -467,20 +467,26 @@ def flagged_content():
     
     Shows profiles that have been reported multiple times.
     """
-    # Get profiles with multiple pending reports
     from sqlalchemy import func
     
-    flagged_users = db.session.query(
-        User,
+    # Step 1: Get user IDs with their report counts (PostgreSQL-compatible)
+    subquery = db.session.query(
+        Report.reported_id,
         func.count(Report.id).label('report_count')
-    ).join(Report, Report.reported_id == User.id)\
-     .filter(Report.status == 'pending')\
-     .group_by(User.id)\
+    ).filter(Report.status == 'pending')\
+     .group_by(Report.reported_id)\
      .having(func.count(Report.id) >= 1)\
-     .order_by(func.count(Report.id).desc())\
+     .subquery()
+    
+    # Step 2: Join with users to get full user objects with report counts
+    flagged_data = db.session.query(
+        User,
+        subquery.c.report_count
+    ).join(subquery, User.id == subquery.c.reported_id)\
+     .order_by(subquery.c.report_count.desc())\
      .all()
     
-    return render_template('admin/flagged.html', flagged_users=flagged_users)
+    return render_template('admin/flagged.html', flagged_users=flagged_data)
 
 
 @admin_bp.route('/flagged/<int:user_id>/dismiss', methods=['POST'])
