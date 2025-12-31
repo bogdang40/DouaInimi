@@ -33,8 +33,16 @@ def create_app(config_name=None):
     
     # Use threading mode for Socket.IO - compatible with Azure App Service
     # Falls back to long-polling which works reliably with gthread workers
-    # SECURITY: Restrict CORS to same origin in production, allow all in development
-    cors_origins = "*" if app.config.get('DEBUG') else [app.config.get('APP_URL', 'https://douainimi.azurewebsites.net')]
+    # SECURITY: Restrict CORS to allowed origins in production, allow all in development
+    if app.config.get('DEBUG'):
+        cors_origins = "*"
+    else:
+        # Allow both Azure URL and custom domain
+        cors_origins = [
+            app.config.get('APP_URL', 'https://douainimi.azurewebsites.net'),
+            'https://2inimi.com',
+            'https://www.2inimi.com',
+        ]
     socketio.init_app(
         app,
         cors_allowed_origins=cors_origins,
