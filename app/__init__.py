@@ -25,15 +25,15 @@ def create_app(config_name=None):
     mail.init_app(app)
     csrf.init_app(app)
     
-    # Use gevent async mode for Socket.IO - enables true async I/O
-    # This allows thousands of concurrent WebSocket connections
+    # Use threading mode for Socket.IO - compatible with Azure App Service
+    # Falls back to long-polling which works reliably with gthread workers
     socketio.init_app(
         app,
         cors_allowed_origins="*",
-        async_mode='gevent',  # Use gevent for async (matches gunicorn worker_class)
-        ping_timeout=30,      # Reduced timeout for faster reconnection
-        ping_interval=15,     # More frequent pings for better connection health
-        logger=False,         # Reduce logging noise
+        async_mode='threading',  # Threading mode works with gthread workers
+        ping_timeout=30,         # Reduced timeout for faster reconnection
+        ping_interval=15,        # More frequent pings for better connection health
+        logger=False,            # Reduce logging noise
         engineio_logger=False
     )
     

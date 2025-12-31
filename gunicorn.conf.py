@@ -1,19 +1,16 @@
-# Gunicorn configuration file
-# Azure App Service will automatically pick this up
+# Gunicorn configuration file for Azure App Service
 
 # Binding
 bind = "0.0.0.0:8000"
 
-# Workers - use multiple workers for parallel request handling
-# Rule of thumb: (2 x CPU cores) + 1
+# Workers and threads - optimized for Azure App Service
+# More workers + threads = more concurrent request handling
 workers = 4
+threads = 4  # 4 workers x 4 threads = 16 concurrent requests
 
-# Worker class - use gevent for async I/O (required for Socket.IO)
-# gevent enables cooperative multitasking, allowing thousands of concurrent connections
-worker_class = "gevent"
-
-# Gevent worker connections - how many simultaneous connections per worker
-worker_connections = 1000
+# Worker class - use gthread (threaded) for best Azure compatibility
+# This supports concurrent requests without needing gevent/eventlet
+worker_class = "gthread"
 
 # Timeouts
 timeout = 120  # Worker timeout (seconds)
@@ -30,6 +27,5 @@ max_requests = 1000  # Restart workers after this many requests (prevents memory
 max_requests_jitter = 50  # Add randomness to prevent all workers restarting at once
 
 # Preload app for faster worker spawning
-# Note: With gevent, preload_app=True can cause issues with monkey-patching
 preload_app = False
 

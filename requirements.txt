@@ -23,8 +23,6 @@ Flask-Mail==0.9.1
 # Real-time (Chat)
 Flask-SocketIO==5.3.6
 python-socketio==5.10.0
-gevent==23.9.1
-gevent-websocket==0.10.1
 
 # Azure
 azure-storage-blob==12.19.0
