@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, not_
+from sqlalchemy.orm import joinedload
 from app.extensions import db
 from app.models.user import User
 from app.models.profile import Profile
@@ -25,7 +26,11 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
         return []
     
     # Base query - users with complete profiles
-    query = User.query.join(Profile).filter(
+    # OPTIMIZED: Eager load photos to avoid N+1 queries in templates
+    query = User.query.join(Profile).options(
+        joinedload(User.photos),  # Eager load photos
+        joinedload(User.profile)  # Ensure profile is loaded
+    ).filter(
         User.id != user.id,
         User.is_active == True,
         User.is_verified == True,

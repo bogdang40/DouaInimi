@@ -13,22 +13,31 @@ matches_bp = Blueprint('matches', __name__)
 @matches_bp.route('/')
 @login_required
 def list():
-    """List all matches - Tinder style."""
-    matches = Match.get_user_matches(current_user.id)
-    
+    """List all matches - Tinder style.
+
+    OPTIMIZED: Uses get_user_matches_with_details to avoid N+1 queries.
+    """
+    # Single optimized query gets matches + last message + unread count
+    matches = Match.get_user_matches_with_details(current_user.id)
+
     # Separate new matches (no messages) from conversations
     new_matches = []
     conversations = []
-    
+
     for match in matches:
-        if match.last_message is None:
+        # Use cached data instead of triggering new queries
+        if match.get_cached_last_message() is None:
             new_matches.append(match)
         else:
             conversations.append(match)
-    
+
     # Sort conversations by last message time (most recent first)
-    conversations.sort(key=lambda m: m.last_message.created_at if m.last_message else m.created_at, reverse=True)
-    
+    # Using cached time instead of accessing relationship
+    conversations.sort(
+        key=lambda m: getattr(m, '_cached_last_message_time', None) or m.matched_at,
+        reverse=True
+    )
+
     # Get pending likes (people who liked you but you haven't liked back)
     pending_likes = Like.query.filter(
         Like.liked_id == current_user.id,
@@ -36,8 +45,8 @@ def list():
             db.session.query(Like.liked_id).filter(Like.liker_id == current_user.id)
         )
     ).order_by(Like.created_at.desc()).all()
-    
-    return render_template('matches/list.html', 
+
+    return render_template('matches/list.html',
                           matches=conversations,
                           new_matches=new_matches,
                           pending_likes=pending_likes,

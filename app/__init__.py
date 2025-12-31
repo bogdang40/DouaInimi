@@ -25,15 +25,14 @@ def create_app(config_name=None):
     mail.init_app(app)
     csrf.init_app(app)
     
-    # Use threading mode for Socket.IO - works reliably with standard Gunicorn
-    # No need for eventlet/gevent which have compatibility issues on Azure
-    # Increase ping timeout to prevent premature disconnections with sync workers
+    # Use gevent async mode for Socket.IO - enables true async I/O
+    # This allows thousands of concurrent WebSocket connections
     socketio.init_app(
-        app, 
-        cors_allowed_origins="*", 
-        async_mode='threading',
-        ping_timeout=60,      # Wait 60 seconds for ping response
-        ping_interval=25,     # Send ping every 25 seconds
+        app,
+        cors_allowed_origins="*",
+        async_mode='gevent',  # Use gevent for async (matches gunicorn worker_class)
+        ping_timeout=30,      # Reduced timeout for faster reconnection
+        ping_interval=15,     # More frequent pings for better connection health
         logger=False,         # Reduce logging noise
         engineio_logger=False
     )
@@ -88,25 +87,39 @@ def create_app(config_name=None):
     @app.context_processor
     def inject_globals():
         from flask_login import current_user
-        
+
         context = {
             'app_name': app.config.get('APP_NAME', 'Două Inimi'),
         }
-        
+
         # Add unread counts for authenticated users
+        # OPTIMIZED: Single query instead of N+1
         if current_user.is_authenticated:
             from app.models.match import Match
             from app.models.message import Message
-            
-            # Get total unread message count
-            total_unread = 0
-            matches = Match.get_user_matches(current_user.id)
-            for match in matches:
-                total_unread += match.unread_count(current_user.id)
-            
-            context['total_unread_messages'] = total_unread
-            context['user_matches_count'] = len(matches)
-        
+            from sqlalchemy import func, and_
+
+            # Single efficient query to get both total unread and match count
+            result = db.session.query(
+                func.count(func.distinct(Match.id)).label('match_count'),
+                func.coalesce(func.sum(
+                    db.session.query(func.count(Message.id))
+                    .filter(
+                        Message.match_id == Match.id,
+                        Message.sender_id != current_user.id,
+                        Message.is_read == False
+                    )
+                    .correlate(Match)
+                    .scalar_subquery()
+                ), 0).label('total_unread')
+            ).filter(
+                db.or_(Match.user1_id == current_user.id, Match.user2_id == current_user.id),
+                Match.is_active == True
+            ).first()
+
+            context['user_matches_count'] = result.match_count if result else 0
+            context['total_unread_messages'] = int(result.total_unread) if result and result.total_unread else 0
+
         return context
     
     # Security headers

@@ -26,28 +26,33 @@ MAX_MESSAGES_PER_MINUTE = 30  # Rate limit
 @messages_bp.route('/')
 @login_required
 def inbox():
-    """Message inbox - list all conversations."""
-    matches = Match.get_user_matches(current_user.id)
-    
+    """Message inbox - list all conversations.
+
+    OPTIMIZED: Uses get_user_matches_with_details to avoid N+1 queries.
+    """
+    # Single optimized query gets matches + last message + unread count
+    matches = Match.get_user_matches_with_details(current_user.id)
+
     conversations = []
     for match in matches:
         other_user = match.get_other_user(current_user.id)
-        last_message = match.last_message
-        unread = match.unread_count(current_user.id)
-        
+        # Use cached data instead of triggering new queries
+        last_message = match.get_cached_last_message()
+        unread = match.get_cached_unread_count()
+
         conversations.append({
             'match': match,
             'user': other_user,
             'last_message': last_message,
             'unread_count': unread,
         })
-    
-    # Sort by last message time
+
+    # Sort by last message time (already sorted by matched_at, resort by message time)
     conversations.sort(
         key=lambda x: x['last_message'].created_at if x['last_message'] else x['match'].matched_at,
         reverse=True
     )
-    
+
     return render_template('messages/inbox.html', conversations=conversations)
 
 

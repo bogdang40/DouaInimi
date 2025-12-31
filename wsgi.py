@@ -1,4 +1,9 @@
 """WSGI entry point for production deployment."""
+# IMPORTANT: Gevent monkey-patching MUST happen before any other imports
+# This patches standard library to be cooperative (non-blocking)
+from gevent import monkey
+monkey.patch_all()
+
 import os
 
 # Run database migrations BEFORE importing Flask app

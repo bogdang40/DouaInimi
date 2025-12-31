@@ -168,6 +168,74 @@ class Match(db.Model):
             db.or_(Match.user1_id == user_id, Match.user2_id == user_id),
             Match.is_active == True
         ).order_by(Match.matched_at.desc()).all()
+
+    @staticmethod
+    def get_user_matches_with_details(user_id):
+        """Get all active matches with last message and unread count in a single query.
+
+        OPTIMIZED: Returns matches with precomputed last_message_id, last_message_time,
+        and unread_count to avoid N+1 queries.
+        """
+        from app.models.message import Message
+        from sqlalchemy import func, case, and_, desc
+        from sqlalchemy.orm import aliased
+
+        # Subquery for last message per match
+        last_msg_subq = db.session.query(
+            Message.match_id,
+            func.max(Message.id).label('last_message_id'),
+            func.max(Message.created_at).label('last_message_time')
+        ).group_by(Message.match_id).subquery()
+
+        # Subquery for unread count per match
+        unread_subq = db.session.query(
+            Message.match_id,
+            func.count(Message.id).label('unread_count')
+        ).filter(
+            Message.sender_id != user_id,
+            Message.is_read == False
+        ).group_by(Message.match_id).subquery()
+
+        # Main query with joins
+        results = db.session.query(
+            Match,
+            last_msg_subq.c.last_message_id,
+            last_msg_subq.c.last_message_time,
+            func.coalesce(unread_subq.c.unread_count, 0).label('unread_count')
+        ).outerjoin(
+            last_msg_subq, Match.id == last_msg_subq.c.match_id
+        ).outerjoin(
+            unread_subq, Match.id == unread_subq.c.match_id
+        ).filter(
+            db.or_(Match.user1_id == user_id, Match.user2_id == user_id),
+            Match.is_active == True
+        ).order_by(Match.matched_at.desc()).all()
+
+        # Fetch all last messages in a single query
+        last_message_ids = [r.last_message_id for r in results if r.last_message_id]
+        last_messages = {}
+        if last_message_ids:
+            messages = Message.query.filter(Message.id.in_(last_message_ids)).all()
+            last_messages = {m.id: m for m in messages}
+
+        # Build result list with all data attached
+        match_data = []
+        for result in results:
+            match = result[0]
+            match._cached_last_message = last_messages.get(result.last_message_id)
+            match._cached_last_message_time = result.last_message_time
+            match._cached_unread_count = result.unread_count
+            match_data.append(match)
+
+        return match_data
+
+    def get_cached_last_message(self):
+        """Get cached last message (use after get_user_matches_with_details)."""
+        return getattr(self, '_cached_last_message', None)
+
+    def get_cached_unread_count(self, user_id=None):
+        """Get cached unread count (use after get_user_matches_with_details)."""
+        return getattr(self, '_cached_unread_count', 0)
     
     def get_other_user(self, user_id):
         """Get the other user in the match."""
