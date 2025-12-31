@@ -3,10 +3,11 @@
 # Binding
 bind = "0.0.0.0:8000"
 
-# Workers and threads - optimized for Azure App Service
-# More workers + threads = more concurrent request handling
-workers = 4
-threads = 4  # 4 workers x 4 threads = 16 concurrent requests
+# Workers and threads - optimized for Socket.IO on Azure App Service
+# IMPORTANT: Socket.IO requires 1 worker without Redis message queue
+# Multiple workers cause "session ID unknown" errors because sessions aren't shared
+workers = 1
+threads = 8  # 1 worker x 8 threads = 8 concurrent requests (sufficient for moderate traffic)
 
 # Worker class - use gthread (threaded) for best Azure compatibility
 # This supports concurrent requests without needing gevent/eventlet
