@@ -75,6 +75,8 @@ class Config:
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///dating.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'false').lower() == 'true'  # Enable query logging
+    SQLALCHEMY_RECORD_QUERIES = True  # Record query stats
     
     # Session
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)

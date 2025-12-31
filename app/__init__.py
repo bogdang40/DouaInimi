@@ -1,10 +1,16 @@
 """Flask application factory."""
 import os
-from flask import Flask
+import time
+import logging
+from flask import Flask, g, request
 from flask_socketio import SocketIO
 
 from app.config import config
 from app.extensions import db, migrate, login_manager, bcrypt, mail, csrf, init_limiter
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 socketio = SocketIO()
 
@@ -70,12 +76,18 @@ def create_app(config_name=None):
     def load_user(user_id):
         return User.query.get(int(user_id))
     
+    # Request timing - start timer
+    @app.before_request
+    def start_timer():
+        g.start_time = time.time()
+        g.query_count = 0
+
     # Update last_active on each request (for online status)
     @app.before_request
     def update_user_activity():
         from flask_login import current_user
         from datetime import datetime
-        
+
         if current_user.is_authenticated:
             # Only update if more than 30 seconds since last update
             if not current_user.last_active or \
@@ -121,7 +133,44 @@ def create_app(config_name=None):
             context['total_unread_messages'] = int(result.total_unread) if result and result.total_unread else 0
 
         return context
-    
+
+    # Request timing logging
+    @app.after_request
+    def log_request_timing(response):
+        # Skip static files and socket.io
+        if request.path.startswith('/static') or request.path.startswith('/socket.io'):
+            return response
+
+        if hasattr(g, 'start_time'):
+            elapsed = (time.time() - g.start_time) * 1000  # Convert to ms
+
+            # Get query info from Flask-SQLAlchemy
+            from flask_sqlalchemy.record_queries import get_recorded_queries
+            try:
+                queries = get_recorded_queries()
+                query_count = len(queries)
+                total_query_time = sum(q.duration * 1000 for q in queries)  # ms
+
+                # Log slow requests (> 500ms) or any request with many queries
+                if elapsed > 500 or query_count > 5:
+                    logger.warning(
+                        f"SLOW REQUEST: {request.method} {request.path} "
+                        f"| Total: {elapsed:.0f}ms | Queries: {query_count} ({total_query_time:.0f}ms)"
+                    )
+                    # Log individual slow queries (> 50ms)
+                    for q in queries:
+                        if q.duration * 1000 > 50:
+                            logger.warning(f"  SLOW QUERY ({q.duration*1000:.0f}ms): {q.statement[:200]}")
+                else:
+                    logger.info(
+                        f"REQUEST: {request.method} {request.path} "
+                        f"| Total: {elapsed:.0f}ms | Queries: {query_count}"
+                    )
+            except Exception as e:
+                logger.info(f"REQUEST: {request.method} {request.path} | Total: {elapsed:.0f}ms (query logging error: {e})")
+
+        return response
+
     # Security headers
     @app.after_request
     def add_security_headers(response):
