@@ -55,7 +55,8 @@ class User(UserMixin, db.Model):
     profile = db.relationship('Profile', backref='user', uselist=False, 
                               cascade='all, delete-orphan', lazy='joined')
     photos = db.relationship('Photo', backref='user', cascade='all, delete-orphan',
-                             order_by='Photo.display_order', lazy='joined')
+                             order_by='Photo.display_order', lazy='joined',
+                             foreign_keys='Photo.user_id')
     
     # Likes sent and received
     likes_sent = db.relationship('Like', foreign_keys='Like.liker_id',
