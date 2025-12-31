@@ -51,7 +51,7 @@ class User(UserMixin, db.Model):
     profile = db.relationship('Profile', backref='user', uselist=False, 
                               cascade='all, delete-orphan', lazy='joined')
     photos = db.relationship('Photo', backref='user', cascade='all, delete-orphan',
-                             order_by='Photo.display_order')
+                             order_by='Photo.display_order', lazy='joined')
     
     # Likes sent and received
     likes_sent = db.relationship('Like', foreign_keys='Like.liker_id',
@@ -158,11 +158,16 @@ class User(UserMixin, db.Model):
     
     @property
     def primary_photo(self):
-        """Get primary photo or first photo."""
-        primary = Photo.query.filter_by(user_id=self.id, is_primary=True).first()
-        if primary:
-            return primary
-        return Photo.query.filter_by(user_id=self.id).order_by(Photo.display_order).first()
+        """Get primary photo or first photo. Uses already-loaded photos to avoid N+1 queries."""
+        # Use the photos relationship (eager-loaded) instead of new queries
+        if not self.photos:
+            return None
+        # Find primary photo in already-loaded collection
+        for photo in self.photos:
+            if photo.is_primary:
+                return photo
+        # Fallback to first photo (already sorted by display_order)
+        return self.photos[0] if self.photos else None
     
     @property
     def primary_photo_url(self):
