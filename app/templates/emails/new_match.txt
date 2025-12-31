@@ -1,0 +1,14 @@
+You Have a New Match!
+
+Great news, {{ user.display_name }}!
+
+You and {{ matched_user.display_name }} have both liked each other. This is your chance to start a meaningful conversation!
+
+Send a message: {{ match_url }}
+
+Don't wait too long - the best connections happen when you reach out early.
+
+May God bless your journey to find love.
+
+--
+Două Inimi

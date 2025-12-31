@@ -1,0 +1,118 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Photo Moderation{% endblock %}
+{% block header %}Photo Moderation{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a href="{{ url_for('admin.photos', status='pending') }}" class="bg-surface-900 rounded-xl p-6 border border-white/5 hover:border-yellow-500/30 transition-colors {{ 'ring-2 ring-yellow-500' if status == 'pending' else '' }}">
+            <p class="text-gray-400 text-xs uppercase font-bold tracking-wider">Pending</p>
+            <p class="text-3xl font-bold text-yellow-400 mt-1">{{ pending_count }}</p>
+        </a>
+        <a href="{{ url_for('admin.photos', status='approved') }}" class="bg-surface-900 rounded-xl p-6 border border-white/5 hover:border-green-500/30 transition-colors {{ 'ring-2 ring-green-500' if status == 'approved' else '' }}">
+            <p class="text-gray-400 text-xs uppercase font-bold tracking-wider">Approved</p>
+            <p class="text-3xl font-bold text-green-400 mt-1">{{ approved_count }}</p>
+        </a>
+        <a href="{{ url_for('admin.photos', status='rejected') }}" class="bg-surface-900 rounded-xl p-6 border border-white/5 hover:border-red-500/30 transition-colors {{ 'ring-2 ring-red-500' if status == 'rejected' else '' }}">
+            <p class="text-gray-400 text-xs uppercase font-bold tracking-wider">Rejected</p>
+            <p class="text-3xl font-bold text-red-400 mt-1">{{ rejected_count }}</p>
+        </a>
+    </div>
+
+    {% if status == 'pending' and pending_count > 0 %}
+    <!-- Bulk Actions -->
+    <div class="flex justify-end">
+        <form action="{{ url_for('admin.approve_all_photos') }}" method="post" onsubmit="return confirm('Approve all {{ pending_count }} pending photos?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                Approve All ({{ pending_count }})
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if photos.items %}
+    <!-- Photo Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {% for photo in photos.items %}
+        <div class="bg-surface-900 rounded-xl border border-white/5 overflow-hidden">
+            <div class="relative aspect-square">
+                <img src="{{ photo.url }}" alt="User photo" class="w-full h-full object-cover">
+                {% if photo.is_primary %}
+                <span class="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">Primary</span>
+                {% endif %}
+            </div>
+            <div class="p-3 space-y-2">
+                <div class="flex items-center gap-2">
+                    <img src="{{ photo.user.primary_photo_url }}" alt="" class="h-6 w-6 rounded-full object-cover">
+                    <a href="{{ url_for('admin.user_detail', user_id=photo.user_id) }}" class="text-sm text-white hover:text-amber-400 truncate">
+                        {{ photo.user.display_name }}
+                    </a>
+                </div>
+                <p class="text-xs text-gray-500">{{ photo.created_at.strftime('%b %d, %Y') }}</p>
+
+                {% if status == 'pending' %}
+                <div class="flex gap-2">
+                    <form action="{{ url_for('admin.approve_photo', photo_id=photo.id) }}" method="post" class="flex-1">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                            Approve
+                        </button>
+                    </form>
+                    <form action="{{ url_for('admin.reject_photo', photo_id=photo.id) }}" method="post" class="flex-1" onsubmit="return confirm('Reject this photo?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                            Reject
+                        </button>
+                    </form>
+                </div>
+                {% elif status == 'rejected' %}
+                <div class="text-xs text-red-400">
+                    {{ photo.moderation_notes or 'Rejected' }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if photos.pages > 1 %}
+    <div class="flex justify-center gap-2 mt-6">
+        {% if photos.has_prev %}
+        <a href="{{ url_for('admin.photos', status=status, page=photos.prev_num) }}" class="px-4 py-2 bg-surface-800 hover:bg-surface-700 text-white rounded-lg text-sm">Previous</a>
+        {% endif %}
+
+        <span class="px-4 py-2 bg-surface-900 text-gray-400 rounded-lg text-sm">Page {{ photos.page }} of {{ photos.pages }}</span>
+
+        {% if photos.has_next %}
+        <a href="{{ url_for('admin.photos', status=status, page=photos.next_num) }}" class="px-4 py-2 bg-surface-800 hover:bg-surface-700 text-white rounded-lg text-sm">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-12 text-center">
+        <div class="text-4xl mb-4">
+            {% if status == 'pending' %}
+            {% elif status == 'approved' %}
+            {% else %}
+            {% endif %}
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">No {{ status }} photos</h3>
+        <p class="text-gray-400">
+            {% if status == 'pending' %}
+            All photos have been reviewed!
+            {% elif status == 'approved' %}
+            No photos have been approved yet.
+            {% else %}
+            No photos have been rejected.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

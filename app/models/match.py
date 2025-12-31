@@ -144,15 +144,47 @@ class Match(db.Model):
         """Create a match between two users. Always stores lower ID as user1_id."""
         user1_id = min(user_a_id, user_b_id)
         user2_id = max(user_a_id, user_b_id)
-        
+
         # Check if match already exists
         existing = Match.query.filter_by(user1_id=user1_id, user2_id=user2_id).first()
         if existing:
             return existing
-        
+
         match = Match(user1_id=user1_id, user2_id=user2_id)
         db.session.add(match)
+
+        # Send email notifications to both users (if they have notifications enabled)
+        try:
+            Match._send_match_notifications(user1_id, user2_id)
+        except Exception:
+            pass  # Don't fail match creation if email fails
+
         return match
+
+    @staticmethod
+    def _send_match_notifications(user1_id, user2_id):
+        """Send email notifications to both users about the new match."""
+        from flask import current_app
+        from app.models.user import User
+
+        user1 = User.query.get(user1_id)
+        user2 = User.query.get(user2_id)
+
+        if not user1 or not user2:
+            return
+
+        try:
+            from app.services.email import send_new_match_email
+
+            # Notify user1 if they have notifications enabled
+            if user1.notify_matches:
+                send_new_match_email(user1, user2)
+
+            # Notify user2 if they have notifications enabled
+            if user2.notify_matches:
+                send_new_match_email(user2, user1)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send match notification: {e}")
     
     @staticmethod
     def get_match(user_a_id, user_b_id):

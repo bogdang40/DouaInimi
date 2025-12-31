@@ -33,9 +33,11 @@ def create_app(config_name=None):
     
     # Use threading mode for Socket.IO - compatible with Azure App Service
     # Falls back to long-polling which works reliably with gthread workers
+    # SECURITY: Restrict CORS to same origin in production, allow all in development
+    cors_origins = "*" if app.config.get('DEBUG') else [app.config.get('APP_URL', 'https://douainimi.azurewebsites.net')]
     socketio.init_app(
         app,
-        cors_allowed_origins="*",
+        cors_allowed_origins=cors_origins,
         async_mode='threading',  # Threading mode works with gthread workers
         ping_timeout=30,         # Reduced timeout for faster reconnection
         ping_interval=15,        # More frequent pings for better connection health

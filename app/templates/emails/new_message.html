@@ -1,0 +1,21 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>New Message</h1>
+
+<p>Hi {{ user.display_name }},</p>
+
+<p><strong>{{ sender.display_name }}</strong> sent you a message:</p>
+
+<div style="background: #f9f9f9; border-left: 4px solid #d97706; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+    <p style="margin: 0; font-style: italic;">"{{ message_preview }}"</p>
+</div>
+
+<p style="text-align: center;">
+    <a href="{{ messages_url }}" class="button">View Message</a>
+</p>
+
+<p class="muted">
+    Reply soon to keep the conversation going!
+</p>
+{% endblock %}

@@ -1,0 +1,14 @@
+New Message
+
+Hi {{ user.display_name }},
+
+{{ sender.display_name }} sent you a message:
+
+"{{ message_preview }}"
+
+View and reply: {{ messages_url }}
+
+Reply soon to keep the conversation going!
+
+--
+Două Inimi

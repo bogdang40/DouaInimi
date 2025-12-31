@@ -19,10 +19,13 @@ class Photo(db.Model):
     is_primary = db.Column(db.Boolean, default=False)
     display_order = db.Column(db.Integer, default=0)
     
-    # Moderation
-    is_approved = db.Column(db.Boolean, default=True)
-    moderation_status = db.Column(db.String(20), default='approved')  # 'pending', 'approved', 'rejected'
-    
+    # Moderation - photos require approval before being shown
+    is_approved = db.Column(db.Boolean, default=False)
+    moderation_status = db.Column(db.String(20), default='pending')  # 'pending', 'approved', 'rejected'
+    moderation_notes = db.Column(db.Text)  # Admin notes for rejection reason
+    moderated_at = db.Column(db.DateTime)
+    moderated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -46,7 +49,34 @@ class Photo(db.Model):
         for order, photo_id in enumerate(photo_order):
             Photo.query.filter_by(id=photo_id, user_id=user_id).update({'display_order': order})
         db.session.commit()
-    
+
+    def approve(self, admin_id=None):
+        """Approve this photo for display."""
+        self.is_approved = True
+        self.moderation_status = 'approved'
+        self.moderated_at = datetime.utcnow()
+        self.moderated_by_id = admin_id
+        db.session.commit()
+
+    def reject(self, admin_id=None, notes=None):
+        """Reject this photo."""
+        self.is_approved = False
+        self.moderation_status = 'rejected'
+        self.moderation_notes = notes
+        self.moderated_at = datetime.utcnow()
+        self.moderated_by_id = admin_id
+        db.session.commit()
+
+    @staticmethod
+    def get_pending_photos():
+        """Get all photos pending moderation."""
+        return Photo.query.filter_by(moderation_status='pending').order_by(Photo.created_at.asc()).all()
+
+    @staticmethod
+    def get_pending_count():
+        """Get count of photos pending moderation."""
+        return Photo.query.filter_by(moderation_status='pending').count()
+
     def __repr__(self):
         return f'<Photo {self.id} (User {self.user_id})>'
 

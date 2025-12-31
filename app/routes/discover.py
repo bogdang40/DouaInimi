@@ -27,6 +27,7 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
     
     # Base query - users with complete profiles
     # OPTIMIZED: Eager load photos to avoid N+1 queries in templates
+    # SECURITY: Only show approved users (admin must approve registrations)
     query = User.query.join(Profile).options(
         joinedload(User.photos),  # Eager load photos
         joinedload(User.profile)  # Ensure profile is loaded
@@ -34,6 +35,8 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
         User.id != user.id,
         User.is_active == True,
         User.is_verified == True,
+        User.is_approved == True,  # Only show admin-approved users
+        User.is_paused == False,   # Don't show paused accounts
         Profile.first_name.isnot(None),
         Profile.bio.isnot(None),
     )
@@ -56,25 +59,36 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
     
     # CONSERVATIVE MATCHING: Opposite gender only
     # Women see men, men see women
+    # If user's gender is not set, they see no one (must complete profile first)
     if profile.gender == 'female':
         query = query.filter(Profile.gender == 'male')
     elif profile.gender == 'male':
         query = query.filter(Profile.gender == 'female')
     else:
-        # If gender not set, default to showing opposite (assume user sets their gender)
-        pass
+        # Gender not set - return empty result set (profile incomplete)
+        query = query.filter(User.id == -1)  # Will match no one
     
-    # Age range filter
-    from datetime import date, timedelta
+    # Age range filter - using robust date calculation
+    from datetime import date
     today = date.today()
-    
+
     if profile.looking_for_age_min:
-        max_birth_date = date(today.year - profile.looking_for_age_min, today.month, today.day)
+        # For minimum age X, find latest birth date (X years ago from today)
+        try:
+            max_birth_date = today.replace(year=today.year - profile.looking_for_age_min)
+        except ValueError:
+            # Handle Feb 29 edge case
+            max_birth_date = today.replace(year=today.year - profile.looking_for_age_min, day=28)
         query = query.filter(Profile.date_of_birth <= max_birth_date)
-    
+
     if profile.looking_for_age_max:
-        min_birth_date = date(today.year - profile.looking_for_age_max - 1, today.month, today.day)
-        query = query.filter(Profile.date_of_birth >= min_birth_date)
+        # For maximum age Y, find earliest birth date (just turned Y+1 today)
+        try:
+            min_birth_date = today.replace(year=today.year - profile.looking_for_age_max - 1)
+        except ValueError:
+            # Handle Feb 29 edge case
+            min_birth_date = today.replace(year=today.year - profile.looking_for_age_max - 1, day=28)
+        query = query.filter(Profile.date_of_birth > min_birth_date)
     
     # Apply additional filters from search form
     if filters:

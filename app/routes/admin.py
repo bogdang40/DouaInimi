@@ -68,11 +68,14 @@ def admin_logout():
 def inject_admin_counts():
     """Inject admin counts into all admin templates."""
     if session.get('is_admin_authenticated'):
+        from app.models.photo import Photo
         pending_approval_count = User.query.filter_by(is_approved=False, is_active=True).count()
         pending_reports_count = Report.query.filter_by(status='pending').count()
+        pending_photos_count = Photo.query.filter_by(moderation_status='pending').count()
         return {
             'pending_approval_count': pending_approval_count,
             'pending_reports_count': pending_reports_count,
+            'pending_photos_count': pending_photos_count,
             'now': datetime.utcnow
         }
     return {'now': datetime.utcnow}
@@ -584,3 +587,87 @@ def stats_api():
         'daily_signups': [{'date': str(d[0]), 'count': d[1]} for d in daily_signups],
         'daily_messages': [{'date': str(d[0]), 'count': d[1]} for d in daily_messages],
     })
+
+
+# ========== PHOTO MODERATION ==========
+
+@admin_bp.route('/photos')
+@admin_required
+def photos():
+    """View photos pending moderation."""
+    from app.models.photo import Photo
+    from sqlalchemy.orm import joinedload
+
+    status = request.args.get('status', 'pending')
+    page = request.args.get('page', 1, type=int)
+
+    query = Photo.query.options(joinedload(Photo.user))
+
+    if status == 'pending':
+        query = query.filter_by(moderation_status='pending')
+    elif status == 'approved':
+        query = query.filter_by(moderation_status='approved')
+    elif status == 'rejected':
+        query = query.filter_by(moderation_status='rejected')
+
+    photos = query.order_by(Photo.created_at.desc()).paginate(page=page, per_page=20)
+
+    # Stats
+    pending_count = Photo.query.filter_by(moderation_status='pending').count()
+    approved_count = Photo.query.filter_by(moderation_status='approved').count()
+    rejected_count = Photo.query.filter_by(moderation_status='rejected').count()
+
+    return render_template('admin/photos.html',
+        photos=photos,
+        status=status,
+        pending_count=pending_count,
+        approved_count=approved_count,
+        rejected_count=rejected_count
+    )
+
+
+@admin_bp.route('/photos/<int:photo_id>/approve', methods=['POST'])
+@admin_required
+def approve_photo(photo_id):
+    """Approve a photo."""
+    from app.models.photo import Photo
+
+    photo = Photo.query.get_or_404(photo_id)
+    photo.approve(admin_id=None)  # Admin ID would come from session if we tracked it
+
+    flash(f"Photo approved.", "success")
+    return redirect(request.referrer or url_for('admin.photos'))
+
+
+@admin_bp.route('/photos/<int:photo_id>/reject', methods=['POST'])
+@admin_required
+def reject_photo(photo_id):
+    """Reject a photo."""
+    from app.models.photo import Photo
+
+    photo = Photo.query.get_or_404(photo_id)
+    notes = request.form.get('notes', 'Photo does not meet guidelines')
+    photo.reject(admin_id=None, notes=notes)
+
+    flash(f"Photo rejected.", "success")
+    return redirect(request.referrer or url_for('admin.photos'))
+
+
+@admin_bp.route('/photos/approve-all', methods=['POST'])
+@admin_required
+def approve_all_photos():
+    """Approve all pending photos."""
+    from app.models.photo import Photo
+
+    pending = Photo.query.filter_by(moderation_status='pending').all()
+    count = len(pending)
+
+    for photo in pending:
+        photo.is_approved = True
+        photo.moderation_status = 'approved'
+        photo.moderated_at = datetime.utcnow()
+
+    db.session.commit()
+
+    flash(f"Approved {count} photos.", "success")
+    return redirect(url_for('admin.photos'))

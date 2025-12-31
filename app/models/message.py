@@ -34,7 +34,53 @@ class Message(db.Model):
         )
         db.session.add(message)
         db.session.commit()
+
+        # Send email notification to recipient (async, non-blocking)
+        try:
+            Message._send_message_notification(match_id, sender_id, content.strip())
+        except Exception:
+            pass  # Don't fail message send if notification fails
+
         return message
+
+    @staticmethod
+    def _send_message_notification(match_id, sender_id, content):
+        """Send email notification to the message recipient."""
+        from flask import current_app
+        from app.models.match import Match
+        from app.models.user import User
+
+        try:
+            match = Match.query.get(match_id)
+            if not match:
+                return
+
+            sender = User.query.get(sender_id)
+            if not sender:
+                return
+
+            # Get recipient
+            recipient_id = match.get_other_user_id(sender_id)
+            recipient = User.query.get(recipient_id)
+            if not recipient:
+                return
+
+            # Check if recipient has message notifications enabled
+            if not recipient.notify_messages:
+                return
+
+            # Only notify if recipient is not currently active (online)
+            # to avoid spamming them while they're chatting
+            if recipient.is_online:
+                return
+
+            from app.services.email import send_new_message_email
+
+            # Create a preview (first 100 chars)
+            preview = content[:100] + ('...' if len(content) > 100 else '')
+            send_new_message_email(recipient, sender, preview)
+        except Exception as e:
+            current_app.logger.error(f"Failed to send message notification: {e}")
     
     @staticmethod
     def get_conversation(match_id, user_id, limit=50, before_id=None):

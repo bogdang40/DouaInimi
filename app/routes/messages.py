@@ -1,4 +1,5 @@
 """Messaging routes with security hardening."""
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from flask_socketio import emit, join_room, leave_room
@@ -307,42 +308,74 @@ def on_message(data):
 
 @socketio.on('mark_read')
 def on_mark_read(data):
-    """Mark messages as read - with auth check."""
+    """Mark messages as read - with auth check and broadcast to sender."""
     from flask_login import current_user
-    
+
     if not current_user.is_authenticated:
         return
-    
+
     match_id = data.get('match_id')
     if not match_id:
         return
-    
+
     # Verify access before marking
     if validate_socket_match_access(match_id, current_user.id):
         Message.mark_conversation_read(match_id, current_user.id)
 
+        # Broadcast read receipt to the room so sender knows their messages were read
+        emit('messages_read', {
+            'match_id': match_id,
+            'read_by': current_user.id,
+            'read_at': datetime.utcnow().strftime('%I:%M %p'),
+        }, room=f'match_{match_id}', include_self=False)
+
 
 @socketio.on('typing')
 def on_typing(data):
-    """Handle typing indicator - with auth check."""
+    """Handle typing indicator - with auth check and timestamp for auto-clear."""
     from flask_login import current_user
-    
+
     if not current_user.is_authenticated:
         return
-    
+
     match_id = data.get('match_id')
     is_typing = data.get('is_typing', False)
-    
+
     if not match_id:
         return
-    
+
     # Verify user is part of match before broadcasting
     if not validate_socket_match_access(match_id, current_user.id):
         return
-    
-    # Emit typing status to room (exclude self)
+
+    # Emit typing status to room with timestamp for client-side auto-clear
+    # Client should auto-clear typing indicator after 3 seconds without new typing event
     emit('user_typing', {
         'match_id': match_id,
         'user_id': current_user.id,
-        'is_typing': bool(is_typing),  # Ensure boolean
+        'user_name': current_user.display_name,
+        'is_typing': bool(is_typing),
+        'timestamp': datetime.utcnow().isoformat(),
     }, room=f'match_{match_id}', include_self=False)
+
+
+@socketio.on('stop_typing')
+def on_stop_typing(data):
+    """Explicitly stop typing indicator."""
+    from flask_login import current_user
+
+    if not current_user.is_authenticated:
+        return
+
+    match_id = data.get('match_id')
+    if not match_id:
+        return
+
+    if validate_socket_match_access(match_id, current_user.id):
+        emit('user_typing', {
+            'match_id': match_id,
+            'user_id': current_user.id,
+            'user_name': current_user.display_name,
+            'is_typing': False,
+            'timestamp': datetime.utcnow().isoformat(),
+        }, room=f'match_{match_id}', include_self=False)

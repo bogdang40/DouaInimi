@@ -1,0 +1,22 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+<h1>You Have a New Match!</h1>
+
+<p>Great news, {{ user.display_name }}!</p>
+
+<p>You and <strong>{{ matched_user.display_name }}</strong> have both liked each other. This is your chance to start a meaningful conversation!</p>
+
+<p style="text-align: center;">
+    <a href="{{ match_url }}" class="button">Send a Message</a>
+</p>
+
+<p class="muted">
+    Don't wait too long - the best connections happen when you reach out early.
+    A simple "Hello" or a thoughtful question about their profile is a great way to start!
+</p>
+
+<p class="muted">
+    May God bless your journey to find love.
+</p>
+{% endblock %}

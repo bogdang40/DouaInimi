@@ -39,6 +39,10 @@ class User(UserMixin, db.Model):
     email_verified_at = db.Column(db.DateTime)
     last_login = db.Column(db.DateTime)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Account lockout for failed login attempts
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
     
     # Online status (considered online if active within last 5 minutes)
     ONLINE_THRESHOLD_MINUTES = 5
@@ -118,11 +122,11 @@ class User(UserMixin, db.Model):
             return "Online now"
         if not self.last_active:
             return "Offline"
-        
+
         from datetime import timedelta
         now = datetime.utcnow()
         diff = now - self.last_active
-        
+
         if diff < timedelta(hours=1):
             minutes = int(diff.total_seconds() / 60)
             return f"Active {minutes}m ago"
@@ -134,11 +138,61 @@ class User(UserMixin, db.Model):
             return f"Active {days}d ago"
         else:
             return "Active recently"
+
+    def get_online_status_for_viewer(self, viewer_user=None):
+        """Get online status respecting privacy settings.
+
+        Args:
+            viewer_user: The user viewing this profile (None for own profile)
+
+        Returns:
+            Online status text if allowed, None if hidden by privacy settings
+        """
+        # Always show own status
+        if viewer_user and viewer_user.id == self.id:
+            return self.online_status_text
+
+        # Respect show_online privacy setting
+        if not self.show_online:
+            return None
+
+        return self.online_status_text
     
     def update_last_login(self):
         """Update last login timestamp."""
         self.last_login = datetime.utcnow()
         self.last_active = datetime.utcnow()
+        # Reset failed login attempts on successful login
+        self.failed_login_attempts = 0
+        self.locked_until = None
+
+    def record_failed_login(self):
+        """Record a failed login attempt and lock account if too many."""
+        from datetime import timedelta
+        self.failed_login_attempts = (self.failed_login_attempts or 0) + 1
+        # Lock account after 5 failed attempts for 15 minutes
+        if self.failed_login_attempts >= 5:
+            self.locked_until = datetime.utcnow() + timedelta(minutes=15)
+
+    @property
+    def is_locked(self):
+        """Check if account is currently locked."""
+        if not self.locked_until:
+            return False
+        if datetime.utcnow() > self.locked_until:
+            # Lock expired, reset
+            self.failed_login_attempts = 0
+            self.locked_until = None
+            return False
+        return True
+
+    @property
+    def lockout_remaining_minutes(self):
+        """Get remaining lockout time in minutes."""
+        if not self.locked_until:
+            return 0
+        remaining = (self.locked_until - datetime.utcnow()).total_seconds() / 60
+        return max(0, int(remaining))
     
     @property
     def age(self):

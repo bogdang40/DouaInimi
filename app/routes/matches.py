@@ -131,19 +131,39 @@ def report_user(user_id):
 @matches_bp.route('/who-likes-me')
 @login_required
 def who_likes_me():
-    """See who has liked you (premium feature placeholder)."""
+    """See who has liked you (premium feature placeholder).
+
+    OPTIMIZED: Single query instead of N+1 queries.
+    """
     if not current_user.is_premium:
         flash('This is a premium feature.', 'info')
         return redirect(url_for('matches.list'))
-    
-    # Get users who have liked current user but aren't matched yet
-    likes = Like.query.filter_by(liked_id=current_user.id).all()
-    likers = []
-    
-    for like in likes:
-        # Check if already matched
-        if not current_user.is_matched_with(like.liker):
-            likers.append(like.liker)
-    
+
+    from app.models.user import User
+    from sqlalchemy.orm import joinedload
+
+    # Get IDs of users we're already matched with
+    matched_user_ids = db.session.query(
+        db.case(
+            (Match.user1_id == current_user.id, Match.user2_id),
+            else_=Match.user1_id
+        )
+    ).filter(
+        db.or_(Match.user1_id == current_user.id, Match.user2_id == current_user.id),
+        Match.is_active == True
+    ).all()
+    matched_ids = {uid[0] for uid in matched_user_ids}
+
+    # Get users who liked us but aren't matched yet (single query with eager loading)
+    likers = User.query.join(
+        Like, Like.liker_id == User.id
+    ).options(
+        joinedload(User.photos),
+        joinedload(User.profile)
+    ).filter(
+        Like.liked_id == current_user.id,
+        ~User.id.in_(matched_ids) if matched_ids else True
+    ).order_by(Like.created_at.desc()).all()
+
     return render_template('matches/who_likes_me.html', users=likers)
 

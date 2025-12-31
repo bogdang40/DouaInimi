@@ -315,21 +315,33 @@ def view_user(user_id):
     """View another user's profile."""
     if user_id == current_user.id:
         return redirect(url_for('profile.view'))
-    
+
     user = User.query.get_or_404(user_id)
-    
+
+    # Check if user is approved and active
+    if not user.is_active or not user.is_approved:
+        flash('This profile is not available.', 'error')
+        return redirect(url_for('discover.browse'))
+
     # Check if blocked
     if current_user.has_blocked(user) or current_user.is_blocked_by(user):
         flash('This profile is not available.', 'error')
         return redirect(url_for('discover.browse'))
-    
+
     # Check if matched
     is_matched = current_user.is_matched_with(user)
     has_liked = current_user.has_liked(user)
-    
-    return render_template('profile/view.html', 
-                          user=user, 
+
+    # Privacy settings - only show what user allows
+    privacy_context = {
+        'can_see_online_status': user.show_online,
+        'can_see_distance': user.show_distance,
+    }
+
+    return render_template('profile/view.html',
+                          user=user,
                           is_own_profile=False,
                           is_matched=is_matched,
-                          has_liked=has_liked)
+                          has_liked=has_liked,
+                          privacy=privacy_context)
 

@@ -1,6 +1,7 @@
 """Authentication routes."""
 from datetime import datetime, timedelta
 import secrets
+from urllib.parse import urlparse, urljoin
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
@@ -8,6 +9,15 @@ from app.models.user import User
 from app.forms.auth import LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def is_safe_url(target):
+    """Check if URL is safe for redirect (same host only)."""
+    if not target:
+        return False
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
 
 # Rate limiting decorator (only applies if limiter is available)
@@ -61,31 +71,46 @@ def login():
     """User login."""
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
-    
+
     form = LoginForm()
-    
+
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data.lower()).first()
-        
+
+        # Check if account is locked due to too many failed attempts
+        if user and user.is_locked:
+            remaining = user.lockout_remaining_minutes
+            flash(f'Account temporarily locked. Try again in {remaining} minutes.', 'error')
+            return render_template('auth/login.html', form=form)
+
         if user and user.check_password(form.password.data):
             if not user.is_active:
                 flash('Your account has been deactivated. Please contact support.', 'error')
                 return render_template('auth/login.html', form=form)
-            
+
+            # Check if account is approved by admin
+            if not user.is_approved:
+                flash('Your account is pending admin approval. Please check back later.', 'warning')
+                return render_template('auth/login.html', form=form)
+
             login_user(user, remember=form.remember_me.data)
             user.update_last_login()
             db.session.commit()
-            
+
             flash('Welcome back!', 'success')
-            
-            # Redirect to next page or dashboard
+
+            # Safely redirect to next page or dashboard (prevent open redirect)
             next_page = request.args.get('next')
-            if next_page:
+            if next_page and is_safe_url(next_page):
                 return redirect(next_page)
             return redirect(url_for('main.dashboard'))
         else:
+            # Record failed login attempt for lockout
+            if user:
+                user.record_failed_login()
+                db.session.commit()
             flash('Invalid email or password.', 'error')
-    
+
     return render_template('auth/login.html', form=form)
 
 

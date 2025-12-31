@@ -68,7 +68,7 @@ class Report(db.Model):
     __tablename__ = 'reports'
     
     id = db.Column(db.Integer, primary_key=True)
-    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # NULL = auto-moderation
     reported_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     reason = db.Column(db.String(50), nullable=False)
@@ -120,8 +120,22 @@ class Report(db.Model):
             self.resolution_notes = notes
         db.session.commit()
     
+    @property
+    def is_auto_generated(self):
+        """Check if this is a system/auto-moderation report."""
+        return self.reporter_id is None
+
+    @property
+    def reporter_display(self):
+        """Get reporter display name or 'System' for auto-moderation."""
+        if self.reporter_id is None:
+            return "System (Auto-Moderation)"
+        return self.reporter.display_name if self.reporter else "Unknown"
+
     def get_reason_display(self):
         """Get human-readable reason."""
+        if self.reason == 'auto_moderation':
+            return 'Auto-Moderation Flag'
         for code, display in self.REASON_CHOICES:
             if code == self.reason:
                 return display
