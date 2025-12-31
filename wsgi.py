@@ -22,12 +22,22 @@ def run_migrations():
         migrations = [
             # Users table - add is_approved column
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE",
-            
-            # Reports table - add new columns  
+            # Users table - add account lockout columns
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",
+
+            # Reports table - add new columns
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS description TEXT",
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_by_id INTEGER",
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP",
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolution_notes TEXT",
+
+            # Photos table - add moderation columns
+            "ALTER TABLE photos ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderation_status VARCHAR(20) DEFAULT 'pending'",
+            "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderation_notes TEXT",
+            "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMP",
+            "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderated_by_id INTEGER REFERENCES users(id)",
         ]
         
         for sql in migrations:
