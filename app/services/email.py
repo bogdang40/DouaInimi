@@ -106,7 +106,7 @@ def send_new_match_email(user, matched_user):
 def send_new_message_email(user, sender, message_preview):
     """Send notification about a new message."""
     messages_url = url_for('messages.inbox', _external=True)
-    
+
     return send_email(
         subject=f"New Message from {sender.display_name}",
         recipient=user.email,
@@ -116,4 +116,40 @@ def send_new_message_email(user, sender, message_preview):
         message_preview=message_preview,
         messages_url=messages_url
     )
+
+
+def send_email_direct(subject, recipients, html_body, text_body=None):
+    """
+    Send an email with direct HTML/text content (no template).
+    Used by EmailNotificationService for inline templates.
+
+    Args:
+        subject: Email subject
+        recipients: List of recipient email addresses
+        html_body: HTML content of the email
+        text_body: Plain text content (optional fallback)
+    """
+    app = current_app._get_current_object()
+
+    msg = Message(
+        subject=subject,
+        recipients=recipients,
+        sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@douainimi.com')
+    )
+
+    msg.html = html_body
+    msg.body = text_body or "Please visit the app to view this notification."
+
+    # Send asynchronously in production, log in development
+    if current_app.config.get('MAIL_SUPPRESS_SEND', False):
+        current_app.logger.info(f"[EMAIL] To: {recipients}, Subject: {subject}")
+        return True
+
+    try:
+        thread = Thread(target=send_async_email, args=[app, msg])
+        thread.start()
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Failed to send email: {e}")
+        return False
 

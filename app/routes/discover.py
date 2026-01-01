@@ -12,6 +12,7 @@ from app.models.match import Like, Match, Pass
 from app.models.report import Block
 from app.forms.search import SearchForm
 from app.utils.decorators import email_verified_required, profile_complete_required
+from app.services.notification_emails import EmailNotificationService
 
 discover_bp = Blueprint('discover', __name__)
 
@@ -130,21 +131,38 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
     if filters:
         if filters.get('denomination'):
             query = query.filter(Profile.denomination == filters['denomination'])
-        
+
         if filters.get('country'):
             query = query.filter(Profile.country == filters['country'])
-        
+
         if filters.get('state_province'):
             query = query.filter(Profile.state_province == filters['state_province'])
-        
+
+        # City filter - case-insensitive partial match
+        if filters.get('city'):
+            city_search = f"%{filters['city'].strip()}%"
+            query = query.filter(Profile.city.ilike(city_search))
+
         if filters.get('speaks_romanian'):
             query = query.filter(Profile.speaks_romanian == filters['speaks_romanian'])
-        
+
+        if filters.get('romanian_origin_region'):
+            query = query.filter(Profile.romanian_origin_region == filters['romanian_origin_region'])
+
         if filters.get('church_attendance'):
             query = query.filter(Profile.church_attendance == filters['church_attendance'])
-        
+
         if filters.get('relationship_goal'):
             query = query.filter(Profile.relationship_goal == filters['relationship_goal'])
+
+        # Education filter
+        if filters.get('education'):
+            query = query.filter(Profile.education == filters['education'])
+
+        # Has children filter
+        if filters.get('has_children'):
+            has_children_val = filters['has_children'] == 'yes'
+            query = query.filter(Profile.has_children == has_children_val)
     
     # Order by last active (most active first)
     query = query.order_by(User.last_active.desc())
@@ -201,9 +219,13 @@ def search():
             'denomination': form.denomination.data,
             'country': form.country.data,
             'state_province': form.state_province.data,
+            'city': form.city.data,
             'speaks_romanian': form.speaks_romanian.data,
+            'romanian_origin_region': form.romanian_origin_region.data,
             'church_attendance': form.church_attendance.data,
             'relationship_goal': form.relationship_goal.data,
+            'education': form.education.data,
+            'has_children': form.has_children.data,
         }
         # Remove empty filters
         filters = {k: v for k, v in filters.items() if v}
@@ -369,7 +391,13 @@ def super_like_user(user_id):
     # Create super like and check for match
     like, is_match = Like.create_like(current_user.id, user_id, is_super=True)
     remaining = Like.super_likes_remaining(current_user.id, is_premium)
-    
+
+    # Send email notification to the super-liked user (async, non-blocking)
+    try:
+        EmailNotificationService.send_super_like_email(target_user, current_user)
+    except Exception as e:
+        current_app.logger.error(f"Failed to send super like email: {e}")
+
     # For swipe mode, return JSON
     if is_swipe_mode:
         response = {

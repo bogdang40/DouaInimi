@@ -1,6 +1,6 @@
 """Email notification service for matches, messages, etc."""
 from flask import current_app, render_template_string
-from app.services.email import send_email
+from app.services.email import send_email_direct
 
 
 # Email templates as strings (could also use files)
@@ -151,7 +151,7 @@ class EmailNotificationService:
                 app_url=EmailNotificationService.get_app_url()
             )
             
-            send_email(
+            send_email_direct(
                 subject=f"💕 It's a Match! You matched with {match_user.display_name}",
                 recipients=[recipient.email],
                 html_body=html,
@@ -177,7 +177,7 @@ class EmailNotificationService:
                 app_url=EmailNotificationService.get_app_url()
             )
             
-            send_email(
+            send_email_direct(
                 subject=f"💬 New message from {sender.display_name}",
                 recipients=[recipient.email],
                 html_body=html,
@@ -199,7 +199,7 @@ class EmailNotificationService:
                 app_url=EmailNotificationService.get_app_url()
             )
             
-            send_email(
+            send_email_direct(
                 subject=f"⭐ {liker.display_name} Super Liked you!",
                 recipients=[recipient.email],
                 html_body=html,

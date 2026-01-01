@@ -65,13 +65,23 @@ class SearchForm(FlaskForm):
         ('friendship_first', 'Friendship First'),
     ], validators=[Optional()])
     
+    # Education & Career
+    education = SelectField('Education', choices=[
+        ('', 'Any'),
+        ('high_school', 'High School'),
+        ('some_college', 'Some College'),
+        ('bachelors', "Bachelor's Degree"),
+        ('masters', "Master's Degree"),
+        ('doctorate', 'Doctorate'),
+    ], validators=[Optional()])
+
     # Lifestyle
     has_children = SelectField('Has Children', choices=[
         ('', 'Any'),
         ('yes', 'Yes'),
         ('no', 'No'),
     ], validators=[Optional()])
-    
+
     submit = SubmitField('Search')
     
     def __init__(self, *args, **kwargs):
