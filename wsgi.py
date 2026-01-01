@@ -38,6 +38,40 @@ def run_migrations():
             "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderation_notes TEXT",
             "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMP",
             "ALTER TABLE photos ADD COLUMN IF NOT EXISTS moderated_by_id INTEGER REFERENCES users(id)",
+
+            # Performance indices for messages
+            "CREATE INDEX IF NOT EXISTS ix_messages_match_id ON messages(match_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_sender_id ON messages(sender_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_unread ON messages(match_id, sender_id, is_read)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_match_created ON messages(match_id, created_at)",
+
+            # Performance indices for matches
+            "CREATE INDEX IF NOT EXISTS ix_matches_user1_id ON matches(user1_id)",
+            "CREATE INDEX IF NOT EXISTS ix_matches_user2_id ON matches(user2_id)",
+            "CREATE INDEX IF NOT EXISTS ix_matches_is_active ON matches(is_active)",
+            "CREATE INDEX IF NOT EXISTS ix_matches_user1_active ON matches(user1_id, is_active)",
+            "CREATE INDEX IF NOT EXISTS ix_matches_user2_active ON matches(user2_id, is_active)",
+
+            # Performance indices for likes
+            "CREATE INDEX IF NOT EXISTS ix_likes_liker_id ON likes(liker_id)",
+            "CREATE INDEX IF NOT EXISTS ix_likes_liked_id ON likes(liked_id)",
+            "CREATE INDEX IF NOT EXISTS ix_likes_created_at ON likes(created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_likes_super ON likes(liker_id, is_super_like, created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_likes_received ON likes(liked_id, created_at)",
+
+            # Performance indices for reports
+            "CREATE INDEX IF NOT EXISTS ix_reports_reporter_id ON reports(reporter_id)",
+            "CREATE INDEX IF NOT EXISTS ix_reports_reported_id ON reports(reported_id)",
+            "CREATE INDEX IF NOT EXISTS ix_reports_status ON reports(status)",
+            "CREATE INDEX IF NOT EXISTS ix_reports_reported_status ON reports(reported_id, status)",
+
+            # Performance indices for blocks
+            "CREATE INDEX IF NOT EXISTS ix_blocks_blocker_id ON blocks(blocker_id)",
+            "CREATE INDEX IF NOT EXISTS ix_blocks_blocked_id ON blocks(blocked_id)",
+
+            # Performance indices for passes
+            "CREATE INDEX IF NOT EXISTS ix_passes_passer_id ON passes(passer_id)",
+            "CREATE INDEX IF NOT EXISTS ix_passes_passed_id ON passes(passed_id)",
         ]
         
         for sql in migrations:

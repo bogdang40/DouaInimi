@@ -6,13 +6,13 @@ from app.extensions import db
 class Pass(db.Model):
     """Record of one user passing (swiping left) on another."""
     __tablename__ = 'passes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    passer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    passed_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    passer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    passed_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.UniqueConstraint('passer_id', 'passed_id', name='unique_pass'),
     )
@@ -42,17 +42,21 @@ class Pass(db.Model):
 class Like(db.Model):
     """Record of one user liking another."""
     __tablename__ = 'likes'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    liker_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    liked_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    liker_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    liked_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     is_super_like = db.Column(db.Boolean, default=False)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
     __table_args__ = (
         db.UniqueConstraint('liker_id', 'liked_id', name='unique_like'),
+        # For super like count queries: WHERE liker_id=X AND is_super_like=true AND created_at>=Y
+        db.Index('ix_likes_super', 'liker_id', 'is_super_like', 'created_at'),
+        # For checking mutual likes: WHERE liked_id=X (find people who liked me)
+        db.Index('ix_likes_received', 'liked_id', 'created_at'),
     )
     
     # Super like limits
@@ -116,27 +120,30 @@ class Like(db.Model):
 class Match(db.Model):
     """Record of a mutual match between two users."""
     __tablename__ = 'matches'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    user1_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user2_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    user1_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    user2_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     matched_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Status
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
     unmatched_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     unmatched_at = db.Column(db.DateTime)
-    
+
     # Relationships
     user1 = db.relationship('User', foreign_keys=[user1_id])
     user2 = db.relationship('User', foreign_keys=[user2_id])
     messages = db.relationship('Message', backref='match', cascade='all, delete-orphan',
                                order_by='Message.created_at')
-    
+
     __table_args__ = (
         db.UniqueConstraint('user1_id', 'user2_id', name='unique_match'),
         db.CheckConstraint('user1_id < user2_id', name='ordered_user_ids'),
+        # Composite index for finding user's active matches
+        db.Index('ix_matches_user1_active', 'user1_id', 'is_active'),
+        db.Index('ix_matches_user2_active', 'user2_id', 'is_active'),
     )
     
     @staticmethod

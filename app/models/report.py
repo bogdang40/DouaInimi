@@ -6,13 +6,13 @@ from app.extensions import db
 class Block(db.Model):
     """Record of one user blocking another."""
     __tablename__ = 'blocks'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    blocker_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    blocked_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    blocker_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    blocked_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     __table_args__ = (
         db.UniqueConstraint('blocker_id', 'blocked_id', name='unique_block'),
     )
@@ -66,26 +66,32 @@ class Block(db.Model):
 class Report(db.Model):
     """Reports submitted by users about other users."""
     __tablename__ = 'reports'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # NULL = auto-moderation
-    reported_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)  # NULL = auto-moderation
+    reported_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     reason = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)  # Detailed description from reporter
-    
+
     # Admin handling
-    status = db.Column(db.String(20), default='pending')  # 'pending', 'resolved', 'dismissed'
+    status = db.Column(db.String(20), default='pending', index=True)  # 'pending', 'resolved', 'dismissed'
     resolved_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     resolved_at = db.Column(db.DateTime)
     resolution_notes = db.Column(db.Text)
-    
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     reporter = db.relationship('User', foreign_keys=[reporter_id])
     reported = db.relationship('User', foreign_keys=[reported_id])
     resolver = db.relationship('User', foreign_keys=[resolved_by_id])
+
+    # Composite index for admin queries
+    __table_args__ = (
+        # For finding pending reports about a user
+        db.Index('ix_reports_reported_status', 'reported_id', 'status'),
+    )
     
     REASON_CHOICES = [
         ('fake_profile', 'Fake Profile'),

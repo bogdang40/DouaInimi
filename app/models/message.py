@@ -6,23 +6,31 @@ from app.extensions import db
 class Message(db.Model):
     """Chat messages between matched users."""
     __tablename__ = 'messages'
-    
+
     id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False)
-    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    
+    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
     content = db.Column(db.Text, nullable=False)
-    
+
     # Status
     is_read = db.Column(db.Boolean, default=False)
     read_at = db.Column(db.DateTime)
-    
+
     # Soft delete per user
     deleted_by_sender = db.Column(db.Boolean, default=False)
     deleted_by_receiver = db.Column(db.Boolean, default=False)
-    
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Composite indices for common query patterns
+    __table_args__ = (
+        # For unread message count queries: WHERE match_id=X AND sender_id!=Y AND is_read=false
+        db.Index('ix_messages_unread', 'match_id', 'sender_id', 'is_read'),
+        # For message ordering within a conversation
+        db.Index('ix_messages_match_created', 'match_id', 'created_at'),
+    )
     
     @staticmethod
     def send_message(match_id, sender_id, content):

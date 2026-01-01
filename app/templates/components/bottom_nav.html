@@ -1,0 +1,80 @@
+<!-- Mobile Bottom Navigation - Only visible on mobile -->
+{% if current_user.is_authenticated %}
+<nav class="fixed bottom-0 left-0 right-0 md:hidden z-40 bottom-nav">
+    <div class="bg-white/95 dark:bg-surface-900/95 backdrop-blur-md border-t border-surface-200 dark:border-white/10">
+        <div class="flex items-center justify-around px-2 py-2">
+            <!-- Discover -->
+            <a href="{{ url_for('discover.browse') }}"
+               class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all
+                      {% if request.endpoint and request.endpoint.startswith('discover') %}
+                      text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10
+                      {% else %}
+                      text-surface-500 dark:text-surface-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-surface-100 dark:hover:bg-surface-800
+                      {% endif %}">
+                <i data-lucide="compass" class="w-5 h-5"></i>
+                <span class="text-xs mt-1 font-medium">Discover</span>
+            </a>
+
+            <!-- Matches -->
+            <a href="{{ url_for('matches.list') }}"
+               class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all relative
+                      {% if request.endpoint and request.endpoint.startswith('matches') %}
+                      text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10
+                      {% else %}
+                      text-surface-500 dark:text-surface-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-surface-100 dark:hover:bg-surface-800
+                      {% endif %}">
+                <i data-lucide="heart" class="w-5 h-5"></i>
+                <span class="text-xs mt-1 font-medium">Matches</span>
+                {% if user_matches_count and user_matches_count > 0 %}
+                <span class="absolute -top-1 right-0 w-5 h-5 bg-amber-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {{ user_matches_count if user_matches_count < 99 else '99+' }}
+                </span>
+                {% endif %}
+            </a>
+
+            <!-- Messages -->
+            <a href="{{ url_for('messages.inbox') }}"
+               class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all relative
+                      {% if request.endpoint and request.endpoint.startswith('messages') %}
+                      text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10
+                      {% else %}
+                      text-surface-500 dark:text-surface-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-surface-100 dark:hover:bg-surface-800
+                      {% endif %}">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                <span class="text-xs mt-1 font-medium">Messages</span>
+                {% if total_unread_messages and total_unread_messages > 0 %}
+                <span class="absolute -top-1 right-0 w-5 h-5 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center unread-badge">
+                    {{ total_unread_messages if total_unread_messages < 99 else '99+' }}
+                </span>
+                {% endif %}
+            </a>
+
+            <!-- Profile -->
+            <a href="{{ url_for('profile.view', user_id=current_user.id) }}"
+               class="flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all
+                      {% if request.endpoint and request.endpoint.startswith('profile') %}
+                      text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10
+                      {% else %}
+                      text-surface-500 dark:text-surface-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-surface-100 dark:hover:bg-surface-800
+                      {% endif %}">
+                {% if current_user.primary_photo %}
+                <img src="{{ current_user.primary_photo_url }}"
+                     alt="Profile"
+                     class="w-6 h-6 rounded-full object-cover border-2
+                            {% if request.endpoint and request.endpoint.startswith('profile') %}
+                            border-amber-500
+                            {% else %}
+                            border-surface-300 dark:border-surface-600
+                            {% endif %}">
+                {% else %}
+                <i data-lucide="user" class="w-5 h-5"></i>
+                {% endif %}
+                <span class="text-xs mt-1 font-medium">Profile</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Spacer to prevent content from being hidden behind bottom nav on mobile -->
+<div class="h-20 md:hidden"></div>
+{% endif %}

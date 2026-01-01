@@ -1,71 +1,161 @@
-<!-- Flash Messages - Light/Dark Theme -->
+<!-- Flash Messages / Toast Container - Light/Dark Theme -->
+<div class="fixed top-20 right-4 z-50 space-y-2 max-w-md" id="toast-container">
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        <div class="fixed top-20 right-4 z-50 space-y-2 max-w-md" id="flash-container">
-            {% for category, message in messages %}
-                <div class="flash-message flex items-start space-x-3 p-4 rounded-xl shadow-lg border backdrop-blur-sm
+        {% for category, message in messages %}
+            <div class="toast-message flex items-start space-x-3 p-4 rounded-xl shadow-lg border backdrop-blur-sm
+                {% if category == 'error' %}
+                    bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30
+                {% elif category == 'success' %}
+                    bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30
+                {% elif category == 'warning' %}
+                    bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30
+                {% else %}
+                    bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/30
+                {% endif %}
+                animate-slide-in"
+                onclick="this.remove()">
+                <div class="flex-shrink-0
+                    {% if category == 'error' %}text-red-600 dark:text-red-400
+                    {% elif category == 'success' %}text-teal-600 dark:text-teal-400
+                    {% elif category == 'warning' %}text-amber-600 dark:text-amber-400
+                    {% else %}text-sky-600 dark:text-sky-400{% endif %}">
                     {% if category == 'error' %}
-                        bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30
+                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
                     {% elif category == 'success' %}
-                        bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
                     {% elif category == 'warning' %}
-                        bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30
+                        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
                     {% else %}
-                        bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/30
+                        <i data-lucide="info" class="w-5 h-5"></i>
                     {% endif %}
-                    animate-slide-in"
-                    onclick="this.remove()">
-                    <div class="flex-shrink-0
-                        {% if category == 'error' %}text-red-600 dark:text-red-400
-                        {% elif category == 'success' %}text-teal-600 dark:text-teal-400
-                        {% elif category == 'warning' %}text-amber-600 dark:text-amber-400
-                        {% else %}text-sky-600 dark:text-sky-400{% endif %}">
-                        {% if category == 'error' %}
-                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                        {% elif category == 'success' %}
-                            <i data-lucide="check-circle" class="w-5 h-5"></i>
-                        {% elif category == 'warning' %}
-                            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-                        {% else %}
-                            <i data-lucide="info" class="w-5 h-5"></i>
-                        {% endif %}
-                    </div>
-                    <div class="flex-1">
-                        <p class="text-sm font-medium text-surface-900 dark:text-white">{{ message }}</p>
-                    </div>
-                    <button type="button" class="flex-shrink-0 text-surface-400 dark:text-gray-400 hover:text-surface-600 dark:hover:text-white">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
                 </div>
-            {% endfor %}
-        </div>
-        
-        <style>
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            .animate-slide-in {
-                animation: slideIn 0.3s ease-out;
-            }
-        </style>
-        
-        <script>
-            setTimeout(function() {
-                const messages = document.querySelectorAll('.flash-message');
-                messages.forEach(function(msg) {
-                    msg.style.transition = 'opacity 0.3s, transform 0.3s';
-                    msg.style.opacity = '0';
-                    msg.style.transform = 'translateX(100%)';
-                    setTimeout(function() { msg.remove(); }, 300);
-                });
-            }, 5000);
-        </script>
+                <div class="flex-1">
+                    <p class="text-sm font-medium text-surface-900 dark:text-white">{{ message }}</p>
+                </div>
+                <button type="button" class="flex-shrink-0 text-surface-400 dark:text-gray-400 hover:text-surface-600 dark:hover:text-white">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+        {% endfor %}
     {% endif %}
 {% endwith %}
+</div>
+
+<style>
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+    .animate-slide-out {
+        animation: slideOut 0.3s ease-out forwards;
+    }
+</style>
+
+<script>
+/**
+ * Toast notification system
+ * Usage: toast.success('Message'), toast.error('Message'), toast.warning('Message'), toast.info('Message')
+ */
+window.toast = {
+    container: null,
+
+    init: function() {
+        this.container = document.getElementById('toast-container');
+    },
+
+    show: function(message, type = 'info', duration = 5000) {
+        if (!this.container) this.init();
+
+        const icons = {
+            success: 'check-circle',
+            error: 'alert-circle',
+            warning: 'alert-triangle',
+            info: 'info'
+        };
+
+        const colors = {
+            success: 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30 text-teal-600 dark:text-teal-400',
+            error: 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400',
+            warning: 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400',
+            info: 'bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-500/30 text-sky-600 dark:text-sky-400'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast-message flex items-start space-x-3 p-4 rounded-xl shadow-lg border backdrop-blur-sm animate-slide-in cursor-pointer`;
+        toast.innerHTML = `
+            <div class="flex-shrink-0 ${colors[type].split(' ').slice(3).join(' ')}">
+                <i data-lucide="${icons[type]}" class="w-5 h-5"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-surface-900 dark:text-white">${message}</p>
+            </div>
+            <button type="button" class="flex-shrink-0 text-surface-400 dark:text-gray-400 hover:text-surface-600 dark:hover:text-white">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        `;
+
+        // Add base color classes
+        toast.classList.add(...colors[type].split(' ').slice(0, 3));
+
+        // Click to dismiss
+        toast.onclick = () => this.dismiss(toast);
+
+        this.container.appendChild(toast);
+
+        // Re-init lucide icons for new elements
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+
+        // Auto-dismiss
+        if (duration > 0) {
+            setTimeout(() => this.dismiss(toast), duration);
+        }
+
+        return toast;
+    },
+
+    dismiss: function(toast) {
+        toast.classList.remove('animate-slide-in');
+        toast.classList.add('animate-slide-out');
+        setTimeout(() => toast.remove(), 300);
+    },
+
+    success: function(message, duration) { return this.show(message, 'success', duration); },
+    error: function(message, duration) { return this.show(message, 'error', duration); },
+    warning: function(message, duration) { return this.show(message, 'warning', duration); },
+    info: function(message, duration) { return this.show(message, 'info', duration); }
+};
+
+// Auto-dismiss server-rendered flash messages after 5 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    toast.init();
+
+    setTimeout(function() {
+        const messages = document.querySelectorAll('#toast-container .toast-message');
+        messages.forEach(function(msg) {
+            toast.dismiss(msg);
+        });
+    }, 5000);
+});
+</script>

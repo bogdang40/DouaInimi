@@ -439,7 +439,7 @@
     
     <!-- Footer -->
     {% block footer %}
-    <footer class="bg-surface-100 dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 mt-auto">
+    <footer class="bg-surface-100 dark:bg-surface-900 border-t border-surface-200 dark:border-white/5 mt-auto hidden md:block">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
@@ -477,6 +477,9 @@
         </div>
     </footer>
     {% endblock %}
+
+    <!-- Mobile Bottom Navigation -->
+    {% include 'components/bottom_nav.html' %}
     
     <!-- Theme Toggle Script -->
     <script>
