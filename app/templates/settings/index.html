@@ -6,11 +6,45 @@
 
 {% block footer %}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Better touch targets for toggles */
+    .toggle-row {
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* Ripple effect on save buttons */
+    .save-btn {
+        position: relative;
+        overflow: hidden;
+    }
+    .save-btn::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: white;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .save-btn:active::after {
+        opacity: 0.2;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
-    <div class="mb-8">
-        <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Settings</h1>
-        <p class="mt-1 text-surface-600 dark:text-gray-400">Manage your account and preferences</p>
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-surface-50 dark:bg-transparent min-h-screen">
+    <!-- Header with back button on mobile -->
+    <div class="mb-6 flex items-center">
+        <a href="{{ url_for('profile.view') }}" class="md:hidden mr-3 p-2 -ml-2 text-surface-500 dark:text-gray-400 hover:text-surface-700 dark:hover:text-white rounded-lg">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="font-display text-2xl sm:text-3xl font-bold text-surface-900 dark:text-white">Settings</h1>
+            <p class="mt-0.5 text-sm text-surface-600 dark:text-gray-400">Manage your account</p>
+        </div>
     </div>
     
     <div class="space-y-6">
@@ -112,25 +146,25 @@
             <form method="POST" action="{{ url_for('settings.update_privacy') }}" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <div class="flex items-center justify-between py-3 border-b border-surface-100 dark:border-white/5">
-                    <div>
+                <div class="toggle-row justify-between py-3 border-b border-surface-100 dark:border-white/5">
+                    <div class="pr-4">
                         <p class="font-medium text-surface-900 dark:text-white">Show Online Status</p>
                         <p class="text-sm text-surface-500 dark:text-gray-400">Let others see when you're online</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="if('vibrate' in navigator) navigator.vibrate(10);">
                         <input type="checkbox" name="show_online" class="sr-only peer" {% if current_user.show_online %}checked{% endif %}>
-                        <div class="w-11 h-6 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-12 h-7 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-sm peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
-                
-                <div class="flex items-center justify-between py-3 border-b border-surface-100 dark:border-white/5">
-                    <div>
+
+                <div class="toggle-row justify-between py-3 border-b border-surface-100 dark:border-white/5">
+                    <div class="pr-4">
                         <p class="font-medium text-surface-900 dark:text-white">Show Distance</p>
                         <p class="text-sm text-surface-500 dark:text-gray-400">Let others see how far away you are</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="if('vibrate' in navigator) navigator.vibrate(10);">
                         <input type="checkbox" name="show_distance" class="sr-only peer" {% if current_user.show_distance %}checked{% endif %}>
-                        <div class="w-11 h-6 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-12 h-7 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-sm peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
                 
@@ -155,25 +189,25 @@
             <form method="POST" action="{{ url_for('settings.update_notifications') }}" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <div class="flex items-center justify-between py-3 border-b border-surface-100 dark:border-white/5">
-                    <div>
+                <div class="toggle-row justify-between py-3 border-b border-surface-100 dark:border-white/5">
+                    <div class="pr-4">
                         <p class="font-medium text-surface-900 dark:text-white">New Matches</p>
                         <p class="text-sm text-surface-500 dark:text-gray-400">Get notified when you have a new match</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="if('vibrate' in navigator) navigator.vibrate(10);">
                         <input type="checkbox" name="notify_matches" class="sr-only peer" checked>
-                        <div class="w-11 h-6 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-12 h-7 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-sm peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
-                
-                <div class="flex items-center justify-between py-3 border-b border-surface-100 dark:border-white/5">
-                    <div>
+
+                <div class="toggle-row justify-between py-3 border-b border-surface-100 dark:border-white/5">
+                    <div class="pr-4">
                         <p class="font-medium text-surface-900 dark:text-white">New Messages</p>
                         <p class="text-sm text-surface-500 dark:text-gray-400">Get notified when you receive a message</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
+                    <label class="relative inline-flex items-center cursor-pointer flex-shrink-0" onclick="if('vibrate' in navigator) navigator.vibrate(10);">
                         <input type="checkbox" name="notify_messages" class="sr-only peer" checked>
-                        <div class="w-11 h-6 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                        <div class="w-12 h-7 bg-surface-300 dark:bg-surface-600 peer-focus:ring-2 peer-focus:ring-amber-500 rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all after:shadow-sm peer-checked:bg-amber-500"></div>
                     </label>
                 </div>
                 
