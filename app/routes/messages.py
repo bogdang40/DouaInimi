@@ -17,6 +17,7 @@ from app.utils.security import (
     validate_socket_match_access,
     log_security_event
 )
+from app.utils.decorators import email_verified_required
 
 messages_bp = Blueprint('messages', __name__)
 
@@ -60,6 +61,7 @@ def record_socket_message(user_id):
 
 @messages_bp.route('/')
 @login_required
+@email_verified_required
 def inbox():
     """Message inbox - list all conversations.
 
@@ -93,6 +95,7 @@ def inbox():
 
 @messages_bp.route('/<int:match_id>')
 @login_required
+@email_verified_required
 def conversation(match_id):
     """View messages in a conversation."""
     match = Match.query.get_or_404(match_id)
@@ -129,6 +132,7 @@ def conversation(match_id):
 
 @messages_bp.route('/<int:match_id>/send', methods=['POST'])
 @login_required
+@email_verified_required
 def send_message(match_id):
     """Send a message - POST endpoint with redirect.
 
@@ -184,6 +188,7 @@ def send_message(match_id):
 
 @messages_bp.route('/<int:match_id>/send-ajax', methods=['POST'])
 @login_required
+@email_verified_required
 def send_message_ajax(match_id):
     """Send a message via AJAX - returns JSON with security validation.
 

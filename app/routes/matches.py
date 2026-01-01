@@ -6,12 +6,14 @@ from app.extensions import db
 from app.models.match import Match, Like
 from app.models.report import Block, Report
 from app.forms.messages import ReportForm
+from app.utils.decorators import email_verified_required
 
 matches_bp = Blueprint('matches', __name__)
 
 
 @matches_bp.route('/')
 @login_required
+@email_verified_required
 def list():
     """List all matches - Tinder style.
 

@@ -1,5 +1,7 @@
 """Discovery and matching routes."""
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+import time
+from collections import defaultdict
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, not_
 from sqlalchemy.orm import joinedload
@@ -9,8 +11,42 @@ from app.models.profile import Profile
 from app.models.match import Like, Match, Pass
 from app.models.report import Block
 from app.forms.search import SearchForm
+from app.utils.decorators import email_verified_required, profile_complete_required
 
 discover_bp = Blueprint('discover', __name__)
+
+# Rate limiting for swipe actions (likes, passes, super likes)
+# Prevents spam and abuse
+MAX_INTERACTIONS_PER_MINUTE = 60  # Max swipes per minute
+_interaction_rate_limits = defaultdict(list)
+RATE_LIMIT_WINDOW = 60  # seconds
+
+
+def check_interaction_rate_limit(user_id):
+    """Check if user has exceeded interaction rate limit.
+
+    Returns:
+        tuple: (allowed: bool, remaining: int)
+    """
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+
+    # Clean old entries
+    _interaction_rate_limits[user_id] = [
+        ts for ts in _interaction_rate_limits[user_id] if ts > window_start
+    ]
+
+    current_count = len(_interaction_rate_limits[user_id])
+
+    if current_count >= MAX_INTERACTIONS_PER_MINUTE:
+        return False, 0
+
+    return True, MAX_INTERACTIONS_PER_MINUTE - current_count
+
+
+def record_interaction(user_id):
+    """Record an interaction for rate limiting purposes."""
+    _interaction_rate_limits[user_id].append(time.time())
 
 
 def get_potential_matches(user, filters=None, page=1, per_page=20):
@@ -119,27 +155,24 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
 
 @discover_bp.route('/')
 @login_required
+@email_verified_required
+@profile_complete_required
 def browse():
     """Browse potential matches (grid view)."""
-    if not current_user.profile or not current_user.profile.is_complete:
-        flash('Please complete your profile first.', 'info')
-        return redirect(url_for('profile.edit'))
-    
     page = request.args.get('page', 1, type=int)
     matches = get_potential_matches(current_user, page=page)
-    
-    return render_template('discover/browse.html', 
+
+    return render_template('discover/browse.html',
                           users=matches,
                           page=page)
 
 
 @discover_bp.route('/swipe')
 @login_required
+@email_verified_required
+@profile_complete_required
 def swipe():
     """Swipe-style discover (Tinder-like)."""
-    if not current_user.profile or not current_user.profile.is_complete:
-        flash('Please complete your profile first.', 'info')
-        return redirect(url_for('profile.edit'))
     
     # Get more users for swipe mode (no pagination needed)
     matches = get_potential_matches(current_user, page=1, per_page=20)
@@ -155,12 +188,10 @@ def swipe():
 
 @discover_bp.route('/search', methods=['GET', 'POST'])
 @login_required
+@email_verified_required
+@profile_complete_required
 def search():
     """Search with filters."""
-    if not current_user.profile:
-        flash('Please complete your profile first.', 'info')
-        return redirect(url_for('profile.edit'))
-    
     form = SearchForm()
     page = request.args.get('page', 1, type=int)
     
@@ -187,25 +218,37 @@ def search():
 
 @discover_bp.route('/like/<int:user_id>', methods=['POST'])
 @login_required
+@email_verified_required
 def like_user(user_id):
-    """Like a user."""
+    """Like a user. Rate limited to prevent spam."""
     is_swipe_mode = request.form.get('swipe_mode') == 'true'
-    
+
+    # Check rate limit
+    allowed, remaining = check_interaction_rate_limit(current_user.id)
+    if not allowed:
+        if is_swipe_mode:
+            return jsonify({'error': 'Too many actions. Please slow down.', 'rate_limited': True}), 429
+        flash('You\'re swiping too fast! Please slow down.', 'warning')
+        return redirect(url_for('discover.browse'))
+
     if user_id == current_user.id:
         if is_swipe_mode:
             return jsonify({'error': 'Cannot like yourself'}), 400
         flash('You cannot like yourself.', 'error')
         return redirect(url_for('discover.browse'))
-    
+
     target_user = User.query.get_or_404(user_id)
-    
+
     # Check if blocked
     if current_user.has_blocked(target_user) or current_user.is_blocked_by(target_user):
         if is_swipe_mode:
             return jsonify({'error': 'Cannot interact with this user'}), 403
         flash('Cannot interact with this user.', 'error')
         return redirect(url_for('discover.browse'))
-    
+
+    # Record the interaction for rate limiting
+    record_interaction(current_user.id)
+
     # Create like and check for match
     like, is_match = Like.create_like(current_user.id, user_id)
     
@@ -236,10 +279,22 @@ def like_user(user_id):
 
 @discover_bp.route('/pass/<int:user_id>', methods=['POST'])
 @login_required
+@email_verified_required
 def pass_user(user_id):
-    """Pass on a user (don't show again)."""
+    """Pass on a user (don't show again). Rate limited to prevent spam."""
     is_swipe_mode = request.form.get('swipe_mode') == 'true'
-    
+
+    # Check rate limit
+    allowed, remaining = check_interaction_rate_limit(current_user.id)
+    if not allowed:
+        if is_swipe_mode:
+            return jsonify({'error': 'Too many actions. Please slow down.', 'rate_limited': True}), 429
+        flash('You\'re swiping too fast! Please slow down.', 'warning')
+        return redirect(url_for('discover.browse'))
+
+    # Record the interaction for rate limiting
+    record_interaction(current_user.id)
+
     # Create a pass record so they won't appear again
     if user_id != current_user.id:
         Pass.create_pass(current_user.id, user_id)
@@ -253,6 +308,7 @@ def pass_user(user_id):
 
 @discover_bp.route('/unlike/<int:user_id>', methods=['POST'])
 @login_required
+@email_verified_required
 def unlike_user(user_id):
     """Remove a like (before matching)."""
     like = Like.query.filter_by(liker_id=current_user.id, liked_id=user_id).first()
@@ -267,37 +323,49 @@ def unlike_user(user_id):
 
 @discover_bp.route('/super-like/<int:user_id>', methods=['POST'])
 @login_required
+@email_verified_required
 def super_like_user(user_id):
-    """Super like a user (limited per day)."""
+    """Super like a user (limited per day). Rate limited to prevent spam."""
     is_swipe_mode = request.form.get('swipe_mode') == 'true'
-    
+
+    # Check rate limit
+    allowed, remaining = check_interaction_rate_limit(current_user.id)
+    if not allowed:
+        if is_swipe_mode:
+            return jsonify({'error': 'Too many actions. Please slow down.', 'rate_limited': True}), 429
+        flash('You\'re swiping too fast! Please slow down.', 'warning')
+        return redirect(url_for('discover.browse'))
+
     if user_id == current_user.id:
         if is_swipe_mode:
             return jsonify({'error': 'Cannot super like yourself'}), 400
         flash('You cannot super like yourself.', 'error')
         return redirect(url_for('discover.browse'))
-    
+
     # Check if user can super like
     is_premium = getattr(current_user, 'is_premium', False)
     if not Like.can_super_like(current_user.id, is_premium):
-        remaining = Like.super_likes_remaining(current_user.id, is_premium)
+        super_remaining = Like.super_likes_remaining(current_user.id, is_premium)
         if is_swipe_mode:
             return jsonify({
                 'error': 'No super likes remaining today',
-                'remaining': remaining
+                'remaining': super_remaining
             }), 429
         flash('You have used all your super likes for today. Try again tomorrow!', 'warning')
         return redirect(url_for('discover.browse'))
-    
+
     target_user = User.query.get_or_404(user_id)
-    
+
     # Check if blocked
     if current_user.has_blocked(target_user) or current_user.is_blocked_by(target_user):
         if is_swipe_mode:
             return jsonify({'error': 'Cannot interact with this user'}), 403
         flash('Cannot interact with this user.', 'error')
         return redirect(url_for('discover.browse'))
-    
+
+    # Record the interaction for rate limiting
+    record_interaction(current_user.id)
+
     # Create super like and check for match
     like, is_match = Like.create_like(current_user.id, user_id, is_super=True)
     remaining = Like.super_likes_remaining(current_user.id, is_premium)

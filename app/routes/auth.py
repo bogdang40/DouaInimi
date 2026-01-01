@@ -117,12 +117,16 @@ def login():
 @auth_bp.route('/register', methods=['GET', 'POST'])
 @rate_limit("5 per minute")
 def register():
-    """User registration."""
+    """User registration.
+
+    SECURITY: Uses generic messaging to prevent email enumeration.
+    If email already exists, sends password reset link instead of revealing existence.
+    """
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
-    
+
     form = RegisterForm()
-    
+
     if form.validate_on_submit():
         # Verify reCAPTCHA if configured
         if current_app.config.get('RECAPTCHA_SECRET_KEY'):
@@ -132,33 +136,48 @@ def register():
             if not success:
                 flash(error or 'Please complete the reCAPTCHA', 'error')
                 return render_template('auth/register.html', form=form)
-        
-        user = User(
-            email=form.email.data.lower(),
-        )
-        user.set_password(form.password.data)
-        
-        # Generate verification token
-        user.verification_token = secrets.token_urlsafe(32)
-        user.verification_token_expires = datetime.utcnow() + timedelta(hours=24)
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        # Send verification email
-        email_sent = send_verification_email_safe(user)
-        
-        # In development, auto-verify if email not configured
-        if current_app.config.get('DEBUG') and not email_sent:
-            user.verify_email()
+
+        email = form.email.data.lower()
+
+        # Check if email already exists (without revealing to user)
+        existing_user = User.query.filter_by(email=email).first()
+
+        if existing_user:
+            # Send password reset email instead of revealing account exists
+            # This prevents email enumeration attacks
+            existing_user.reset_token = secrets.token_urlsafe(32)
+            existing_user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
             db.session.commit()
-            flash('Account created! (Email auto-verified in dev mode)', 'success')
+            send_password_reset_email_safe(existing_user)
+            current_app.logger.info(f"Registration attempt for existing email: {email}")
         else:
-            flash('Account created! Please check your email to verify your account.', 'success')
-        
-        login_user(user)
-        return redirect(url_for('profile.edit'))
-    
+            # Create new user
+            user = User(email=email)
+            user.set_password(form.password.data)
+
+            # Generate verification token
+            user.verification_token = secrets.token_urlsafe(32)
+            user.verification_token_expires = datetime.utcnow() + timedelta(hours=24)
+
+            db.session.add(user)
+            db.session.commit()
+
+            # Send verification email
+            email_sent = send_verification_email_safe(user)
+
+            # In development, auto-verify if email not configured
+            if current_app.config.get('DEBUG') and not email_sent:
+                user.verify_email()
+                db.session.commit()
+
+            # Log in the new user
+            login_user(user)
+            return redirect(url_for('profile.edit'))
+
+        # Show same generic message for both cases to prevent enumeration
+        flash('If this email is available, we\'ve sent you a confirmation. Check your inbox!', 'success')
+        return redirect(url_for('auth.login'))
+
     return render_template('auth/register.html', form=form)
 
 

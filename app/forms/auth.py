@@ -38,12 +38,9 @@ class RegisterForm(FlaskForm):
     ])
     submit = SubmitField('Create Account')
     
-    def validate_email(self, field):
-        """Check if email is already registered."""
-        user = User.query.filter_by(email=field.data.lower()).first()
-        if user:
-            raise ValidationError('This email is already registered. Please use a different email or sign in.')
-    
+    # NOTE: Email uniqueness check moved to route to prevent enumeration attacks
+    # The route handles existing emails by sending a "reset password" email instead
+
     def validate_password(self, field):
         """Validate password strength."""
         password = field.data
