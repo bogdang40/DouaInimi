@@ -207,6 +207,7 @@
                     <!-- Approve (if pending) -->
                     {% if not user.is_approved %}
                     <form method="POST" action="{{ url_for('admin.approve_user', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('Approve this user?')"
                                 class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
                             <i data-lucide="check" class="w-4 h-4 mr-2"></i> Approve User
@@ -216,6 +217,7 @@
 
                     <!-- Toggle Active -->
                     <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('{{ 'Suspend' if user.is_active else 'Reactivate' }} this user?')"
                                 class="w-full {{ 'bg-red-600 hover:bg-red-700' if user.is_active else 'bg-green-600 hover:bg-green-700' }} text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
                             <i data-lucide="{{ 'ban' if user.is_active else 'check' }}" class="w-4 h-4 mr-2"></i>
@@ -225,6 +227,7 @@
 
                     <!-- Toggle Verified -->
                     <form method="POST" action="{{ url_for('admin.toggle_user_verified', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit"
                                 class="w-full bg-surface-800 hover:bg-surface-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
                             <i data-lucide="badge-check" class="w-4 h-4 mr-2"></i>
@@ -234,6 +237,7 @@
 
                     <!-- Toggle Premium -->
                     <form method="POST" action="{{ url_for('admin.toggle_user_premium', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit"
                                 class="w-full bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
                             <i data-lucide="crown" class="w-4 h-4 mr-2"></i>
@@ -244,6 +248,7 @@
                     <!-- Toggle Admin (only if not self) -->
                     {% if user.id != current_user.id %}
                     <form method="POST" action="{{ url_for('admin.toggle_user_admin', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('{{ 'Remove admin' if user.is_admin else 'Grant admin' }} access?')"
                                 class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center">
                             <i data-lucide="shield" class="w-4 h-4 mr-2"></i>
@@ -257,6 +262,7 @@
                     <!-- Delete User -->
                     {% if user.id != current_user.id %}
                     <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('⚠️ PERMANENTLY DELETE {{ user.email }}?\\n\\nThis cannot be undone!') && prompt('Type DELETE to confirm') === 'DELETE'"
                                 class="w-full bg-red-900/50 hover:bg-red-900 text-red-400 py-2 rounded-lg font-medium transition-colors flex items-center justify-center border border-red-500/30">
                             <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i> Delete User

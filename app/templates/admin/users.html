@@ -141,36 +141,41 @@
                                         
                                         {% if user.is_active %}
                                         <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" onclick="return confirm('Suspend this user?')" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 flex items-center">
                                                 <i data-lucide="ban" class="w-4 h-4 mr-2"></i> Suspend
                                             </button>
                                         </form>
                                         {% else %}
                                         <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" onclick="return confirm('Reactivate this user?')" class="w-full text-left px-4 py-2 text-sm text-green-400 hover:bg-white/5 flex items-center">
                                                 <i data-lucide="check" class="w-4 h-4 mr-2"></i> Reactivate
                                             </button>
                                         </form>
                                         {% endif %}
-                                        
+
                                         <form method="POST" action="{{ url_for('admin.toggle_user_verified', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 flex items-center">
-                                                <i data-lucide="badge-check" class="w-4 h-4 mr-2"></i> 
+                                                <i data-lucide="badge-check" class="w-4 h-4 mr-2"></i>
                                                 {{ 'Unverify' if user.is_verified else 'Verify' }}
                                             </button>
                                         </form>
-                                        
+
                                         <form method="POST" action="{{ url_for('admin.toggle_user_premium', user_id=user.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="w-full text-left px-4 py-2 text-sm text-amber-400 hover:bg-white/5 flex items-center">
-                                                <i data-lucide="crown" class="w-4 h-4 mr-2"></i> 
+                                                <i data-lucide="crown" class="w-4 h-4 mr-2"></i>
                                                 {{ 'Remove Premium' if user.is_premium else 'Grant Premium' }}
                                             </button>
                                         </form>
-                                        
+
                                         <div class="h-px bg-white/10 my-1"></div>
-                                        
+
                                         <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}">
-                                            <button type="submit" onclick="return confirm('⚠️ PERMANENTLY DELETE this user? Type DELETE to confirm:') && prompt('Type DELETE to confirm') === 'DELETE'" 
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" onclick="return confirm('⚠️ PERMANENTLY DELETE this user? Type DELETE to confirm:') && prompt('Type DELETE to confirm') === 'DELETE'"
                                                     class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-white/5 flex items-center">
                                                 <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i> Delete User
                                             </button>
