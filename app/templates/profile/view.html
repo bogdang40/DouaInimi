@@ -23,7 +23,7 @@
         <div class="relative">
             <!-- Online Status Badge (for other users) -->
             {% if not is_own_profile %}
-            <div class="absolute top-4 left-4 z-10">
+            <div class="absolute top-4 left-4 z-10 flex flex-col space-y-2">
                 {% if user.is_online %}
                 <div class="flex items-center bg-green-500/90 backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full shadow-lg">
                     <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
@@ -33,6 +33,18 @@
                 <div class="flex items-center bg-black/50 backdrop-blur-sm text-white/80 text-sm px-3 py-1.5 rounded-full">
                     <span class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
                     {{ user.online_status_text }}
+                </div>
+                {% endif %}
+
+                <!-- Compatibility Score Badge -->
+                {% if current_user.profile and profile %}
+                {% set compat_score = current_user.profile.calculate_compatibility(profile) %}
+                <div class="flex items-center space-x-1.5
+                    {% if compat_score >= 80 %}bg-green-500/90{% elif compat_score >= 60 %}bg-amber-500/90{% else %}bg-surface-600/80{% endif %}
+                    backdrop-blur-sm text-white text-sm px-3 py-1.5 rounded-full shadow-lg"
+                    title="Values compatibility based on faith and lifestyle">
+                    <i data-lucide="heart" class="w-4 h-4"></i>
+                    <span class="font-semibold">{{ compat_score }}% Match</span>
                 </div>
                 {% endif %}
             </div>
@@ -188,7 +200,7 @@
                 </div>
                 
                 <!-- Traditional Values -->
-                {% if profile.conservatism_level or profile.prayer_frequency or profile.fasting_practice %}
+                {% if profile.conservatism_level or profile.prayer_frequency or profile.fasting_practice or profile.modesty_level %}
                 <div class="bg-surface-50 dark:bg-white/5 border border-surface-100 dark:border-white/5 rounded-xl p-5">
                     <h2 class="font-display text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center">
                         <span class="mr-2">⚖️</span> Traditional Values
@@ -198,6 +210,18 @@
                         <div class="flex justify-between">
                             <dt class="text-surface-500">Lifestyle</dt>
                             <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_conservatism_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.modesty_level %}
+                        <div class="flex justify-between">
+                            <dt class="text-surface-500">Modesty</dt>
+                            <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_modesty_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.gender == 'female' and profile.church_attire_women %}
+                        <div class="flex justify-between">
+                            <dt class="text-surface-500">Church Attire</dt>
+                            <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_church_attire_display() }}</dd>
                         </div>
                         {% endif %}
                         {% if profile.prayer_frequency %}
@@ -222,6 +246,41 @@
                         <div class="flex justify-between">
                             <dt class="text-surface-500">Head Covering</dt>
                             <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_head_covering_display() }}</dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+                {% endif %}
+
+                <!-- Orthodox Sacraments & Practices -->
+                {% if profile.confession_frequency or profile.communion_frequency or profile.saints_nameday or profile.icons_in_home %}
+                <div class="bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 rounded-xl p-5">
+                    <h2 class="font-display text-lg font-semibold text-purple-900 dark:text-purple-300 mb-4 flex items-center">
+                        <span class="mr-2">☦️</span> Orthodox Practices
+                    </h2>
+                    <dl class="space-y-3 text-sm">
+                        {% if profile.confession_frequency %}
+                        <div class="flex justify-between">
+                            <dt class="text-purple-600 dark:text-purple-400">Confession</dt>
+                            <dd class="text-purple-800 dark:text-purple-200">{{ profile.get_confession_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.communion_frequency %}
+                        <div class="flex justify-between">
+                            <dt class="text-purple-600 dark:text-purple-400">Communion</dt>
+                            <dd class="text-purple-800 dark:text-purple-200">{{ profile.get_communion_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.saints_nameday %}
+                        <div class="flex justify-between">
+                            <dt class="text-purple-600 dark:text-purple-400">Patron Saint</dt>
+                            <dd class="text-purple-800 dark:text-purple-200">{{ profile.saints_nameday }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.icons_in_home %}
+                        <div class="flex justify-between">
+                            <dt class="text-purple-600 dark:text-purple-400">Home Icons</dt>
+                            <dd class="text-purple-800 dark:text-purple-200">✓ Has prayer corner</dd>
                         </div>
                         {% endif %}
                     </dl>
@@ -255,16 +314,34 @@
                     </dl>
                 </div>
                 
-                <!-- Lifestyle -->
+                <!-- Family & Lifestyle -->
                 <div class="bg-surface-50 dark:bg-white/5 border border-surface-100 dark:border-white/5 rounded-xl p-5">
                     <h2 class="font-display text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center">
-                        <span class="mr-2">🏠</span> Lifestyle
+                        <span class="mr-2">👨‍👩‍👧‍👦</span> Family & Lifestyle
                     </h2>
                     <dl class="space-y-3 text-sm">
+                        {% if profile.marital_history %}
+                        <div class="flex justify-between">
+                            <dt class="text-surface-500">Marital Status</dt>
+                            <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_marital_history_display() }}</dd>
+                        </div>
+                        {% endif %}
                         {% if profile.wants_children %}
                         <div class="flex justify-between">
-                            <dt class="text-surface-500">Children</dt>
+                            <dt class="text-surface-500">Wants Children</dt>
                             <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_wants_children_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.desired_children_count %}
+                        <div class="flex justify-between">
+                            <dt class="text-surface-500">Desired Children</dt>
+                            <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_desired_children_display() }}</dd>
+                        </div>
+                        {% endif %}
+                        {% if profile.children_education_preference %}
+                        <div class="flex justify-between">
+                            <dt class="text-surface-500">Children Education</dt>
+                            <dd class="text-surface-700 dark:text-gray-200">{{ profile.get_children_education_display() }}</dd>
                         </div>
                         {% endif %}
                         {% if profile.smoking %}
