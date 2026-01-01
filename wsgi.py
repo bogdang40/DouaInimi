@@ -72,6 +72,18 @@ def run_migrations():
             # Performance indices for passes
             "CREATE INDEX IF NOT EXISTS ix_passes_passer_id ON passes(passer_id)",
             "CREATE INDEX IF NOT EXISTS ix_passes_passed_id ON passes(passed_id)",
+
+            # Orthodox-specific profile fields
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS church_attire_women VARCHAR(30)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS modesty_level VARCHAR(30)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS confession_frequency VARCHAR(30)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS communion_frequency VARCHAR(30)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS icons_in_home BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS saints_nameday VARCHAR(100)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS marital_history VARCHAR(30)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS desired_children_count VARCHAR(20)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS children_education_preference VARCHAR(50)",
+            "ALTER TABLE profiles ADD COLUMN IF NOT EXISTS seeks_modest_spouse BOOLEAN DEFAULT FALSE",
         ]
         
         for sql in migrations:
