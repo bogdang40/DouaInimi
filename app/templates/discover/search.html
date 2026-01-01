@@ -6,24 +6,60 @@
 
 {% block footer %}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Mobile filter drawer */
+    .filter-drawer {
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+    }
+    .filter-drawer.open {
+        transform: translateY(0);
+    }
+    .filter-backdrop {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+    .filter-backdrop.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-surface-50 dark:bg-transparent min-h-screen">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 bg-surface-50 dark:bg-transparent min-h-screen">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <h1 class="font-display text-3xl font-bold text-surface-900 dark:text-white">Search</h1>
-            <p class="mt-1 text-surface-600 dark:text-gray-400">Filter profiles by your preferences</p>
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <a href="{{ url_for('discover.swipe') }}" class="lg:hidden mr-3 p-2 -ml-2 text-surface-500 dark:text-gray-400">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </a>
+            <div>
+                <h1 class="font-display text-2xl sm:text-3xl font-bold text-surface-900 dark:text-white">Search</h1>
+                <p class="mt-0.5 text-sm text-surface-600 dark:text-gray-400 hidden sm:block">Filter by preferences</p>
+            </div>
         </div>
-        <a href="{{ url_for('discover.browse') }}" 
-           class="flex items-center space-x-2 px-4 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10 transition">
-            <i data-lucide="grid" class="w-4 h-4"></i>
-            <span>Browse All</span>
-        </a>
+        <div class="flex items-center space-x-2">
+            <!-- Mobile filter toggle -->
+            <button type="button"
+                    onclick="toggleFilters(); if('vibrate' in navigator) navigator.vibrate(10);"
+                    class="lg:hidden flex items-center space-x-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl active:scale-95 transition-transform">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+                <span>Filters</span>
+            </button>
+            <a href="{{ url_for('discover.browse') }}"
+               class="hidden sm:flex items-center space-x-2 px-4 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300 hover:bg-surface-200 dark:hover:bg-white/10 transition">
+                <i data-lucide="grid" class="w-4 h-4"></i>
+                <span>Browse</span>
+            </a>
+        </div>
     </div>
     
     <div class="grid lg:grid-cols-4 gap-8">
-        <!-- Filters Sidebar -->
-        <div class="lg:col-span-1">
+        <!-- Filters Sidebar - Hidden on mobile, use drawer instead -->
+        <div class="hidden lg:block lg:col-span-1">
             <form method="POST" class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl p-6 sticky top-24">
                 {{ form.hidden_tag() }}
                 
@@ -189,10 +225,13 @@
                 {% set profile = user.profile %}
                 <div class="bg-white dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-2xl overflow-hidden hover:shadow-lg dark:hover:bg-white/10 transition group">
                     <!-- Photo -->
-                    <a href="{{ url_for('profile.view_user', user_id=user.id) }}" class="block relative">
-                        <div class="aspect-[3/4] overflow-hidden">
-                            <img src="{{ user.primary_photo_url }}" 
+                    <a href="{{ url_for('profile.view_user', user_id=user.id) }}"
+                       onclick="if('vibrate' in navigator) navigator.vibrate(5);"
+                       class="block relative touch-scale">
+                        <div class="aspect-[3/4] overflow-hidden bg-surface-100 dark:bg-surface-800">
+                            <img src="{{ user.primary_photo_url }}"
                                  alt="{{ user.display_name }}"
+                                 loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                         </div>
                         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
@@ -230,14 +269,18 @@
                         <div class="flex space-x-2">
                             <form action="{{ url_for('discover.pass_user', user_id=user.id) }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 transition text-sm">
+                                <button type="submit"
+                                        onclick="if('vibrate' in navigator) navigator.vibrate(10);"
+                                        class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 active:scale-95 transition text-sm">
                                     <i data-lucide="x" class="w-4 h-4"></i>
                                     <span>Pass</span>
                                 </button>
                             </form>
                             <form action="{{ url_for('discover.like_user', user_id=user.id) }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-400 hover:to-red-500 transition text-sm">
+                                <button type="submit"
+                                        onclick="if('vibrate' in navigator) navigator.vibrate(15);"
+                                        class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-400 hover:to-red-500 active:scale-95 transition text-sm">
                                     <i data-lucide="heart" class="w-4 h-4"></i>
                                     <span>Like</span>
                                 </button>
@@ -289,4 +332,77 @@
         </div>
     </div>
 </div>
+
+<!-- Mobile Filter Drawer Backdrop -->
+<div id="filter-backdrop" class="filter-backdrop fixed inset-0 bg-black/50 z-40 lg:hidden" onclick="toggleFilters()"></div>
+
+<!-- Mobile Filter Drawer -->
+<div id="filter-drawer" class="filter-drawer fixed inset-x-0 bottom-0 z-50 lg:hidden max-h-[85vh] overflow-y-auto bg-white dark:bg-surface-900 rounded-t-3xl">
+    <!-- Drawer Handle -->
+    <div class="sticky top-0 bg-white dark:bg-surface-900 px-6 py-4 border-b border-surface-200 dark:border-white/10">
+        <div class="w-12 h-1 bg-surface-300 dark:bg-surface-600 rounded-full mx-auto mb-3"></div>
+        <div class="flex items-center justify-between">
+            <h3 class="font-display text-lg font-semibold text-surface-900 dark:text-white">Filters</h3>
+            <button onclick="toggleFilters()" class="p-2 text-surface-500 dark:text-gray-400">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Filter Form (duplicate for drawer) -->
+    <form method="POST" class="p-6 space-y-4">
+        {{ form.hidden_tag() }}
+
+        <!-- Quick filters in 2 columns -->
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">✝️ Denomination</label>
+                {{ form.denomination(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">🌍 Country</label>
+                {{ form.country(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">🇷🇴 Romanian</label>
+                {{ form.speaks_romanian(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">⛪ Church</label>
+                {{ form.church_attendance(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">💕 Looking For</label>
+                {{ form.relationship_goal(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-surface-500 dark:text-gray-400 mb-1">⚖️ Conservatism</label>
+                {{ form.conservatism_level(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm") }}
+            </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex space-x-3 pt-4">
+            <a href="{{ url_for('discover.search') }}"
+               class="flex-1 py-3 text-center bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-700 dark:text-gray-300">
+                Reset
+            </a>
+            <button type="submit"
+                    onclick="if('vibrate' in navigator) navigator.vibrate(20);"
+                    class="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl active:scale-95 transition-transform">
+                Apply Filters
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleFilters() {
+    const drawer = document.getElementById('filter-drawer');
+    const backdrop = document.getElementById('filter-backdrop');
+    drawer.classList.toggle('open');
+    backdrop.classList.toggle('open');
+    document.body.style.overflow = drawer.classList.contains('open') ? 'hidden' : '';
+}
+</script>
 {% endblock %}
