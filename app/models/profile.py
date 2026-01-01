@@ -52,11 +52,29 @@ class Profile(db.Model):
     bible_reading = db.Column(db.String(30))  # 'daily', 'weekly', 'monthly', 'occasionally'
     dietary_restrictions = db.Column(db.String(30))  # 'strict_orthodox', 'no_pork', 'vegetarian', etc.
     family_role_view = db.Column(db.String(30))  # 'traditional', 'complementarian', 'egalitarian', 'flexible'
-    
+
+    # Church Attire & Modesty (Orthodox-specific)
+    church_attire_women = db.Column(db.String(30))  # 'skirt_dress_only', 'modest_pants_ok', 'flexible'
+    modesty_level = db.Column(db.String(30))  # 'very_modest', 'modest', 'moderate', 'flexible'
+
+    # Orthodox Sacraments & Practices
+    confession_frequency = db.Column(db.String(30))  # 'regularly', 'before_communion', 'annually', 'major_feasts', 'rarely'
+    communion_frequency = db.Column(db.String(30))  # 'weekly', 'monthly', 'major_feasts', 'annually', 'rarely'
+    icons_in_home = db.Column(db.Boolean, default=True)  # Orthodox iconostasis/prayer corner
+    saints_nameday = db.Column(db.String(100))  # Patron saint name
+
+    # Marital History (important for Orthodox wedding rules)
+    marital_history = db.Column(db.String(30))  # 'never_married', 'divorced_civil', 'divorced_church', 'widowed', 'annulled'
+
+    # Family Planning
+    desired_children_count = db.Column(db.String(20))  # '1-2', '3-4', '5+', 'as_god_wills', 'none'
+    children_education_preference = db.Column(db.String(50))  # 'orthodox_school', 'private_christian', 'homeschool', 'public', 'flexible'
+
     # Additional preferences
     wants_spouse_same_denomination = db.Column(db.Boolean, default=False)
     willing_to_relocate = db.Column(db.Boolean, default=False)
     wants_church_wedding = db.Column(db.Boolean, default=True)
+    seeks_modest_spouse = db.Column(db.Boolean, default=False)  # Looking for modest partner
     
     # What I'm Looking For
     looking_for_gender = db.Column(db.String(20))
@@ -232,7 +250,60 @@ class Profile(db.Model):
         'egalitarian': 'Egalitarian',
         'flexible': 'Flexible',
     }
-    
+
+    CHURCH_ATTIRE_DISPLAY = {
+        'skirt_dress_only': 'Skirt/Dress Only',
+        'modest_pants_ok': 'Modest Pants Okay',
+        'flexible': 'Flexible',
+    }
+
+    MODESTY_DISPLAY = {
+        'very_modest': 'Very Modest',
+        'modest': 'Modest',
+        'moderate': 'Moderate',
+        'flexible': 'Flexible',
+    }
+
+    CONFESSION_DISPLAY = {
+        'regularly': 'Regularly (monthly+)',
+        'before_communion': 'Before Communion',
+        'annually': 'Annually (Great Lent)',
+        'major_feasts': 'Major Feasts',
+        'rarely': 'Rarely',
+    }
+
+    COMMUNION_DISPLAY = {
+        'weekly': 'Weekly',
+        'monthly': 'Monthly',
+        'major_feasts': 'Major Feasts Only',
+        'annually': 'Annually',
+        'rarely': 'Rarely',
+    }
+
+    MARITAL_HISTORY_DISPLAY = {
+        'never_married': 'Never Married',
+        'divorced_civil': 'Divorced (Civil)',
+        'divorced_church': 'Divorced (Church)',
+        'widowed': 'Widowed',
+        'annulled': 'Annulled',
+    }
+
+    DESIRED_CHILDREN_DISPLAY = {
+        '1-2': '1-2 Children',
+        '3-4': '3-4 Children',
+        '5+': '5+ Children',
+        'as_god_wills': 'As God Wills',
+        'none': 'No Children',
+    }
+
+    CHILDREN_EDUCATION_DISPLAY = {
+        'orthodox_school': 'Orthodox School',
+        'private_christian': 'Private Christian School',
+        'homeschool': 'Homeschool',
+        'public': 'Public School',
+        'flexible': 'Flexible',
+    }
+
     def get_gender_display(self):
         return self.GENDER_DISPLAY.get(self.gender, self.gender)
     
@@ -268,7 +339,130 @@ class Profile(db.Model):
     
     def get_family_role_display(self):
         return self.FAMILY_ROLE_DISPLAY.get(self.family_role_view, self.family_role_view)
-    
+
+    def get_church_attire_display(self):
+        return self.CHURCH_ATTIRE_DISPLAY.get(self.church_attire_women, self.church_attire_women)
+
+    def get_modesty_display(self):
+        return self.MODESTY_DISPLAY.get(self.modesty_level, self.modesty_level)
+
+    def get_confession_display(self):
+        return self.CONFESSION_DISPLAY.get(self.confession_frequency, self.confession_frequency)
+
+    def get_communion_display(self):
+        return self.COMMUNION_DISPLAY.get(self.communion_frequency, self.communion_frequency)
+
+    def get_marital_history_display(self):
+        return self.MARITAL_HISTORY_DISPLAY.get(self.marital_history, self.marital_history)
+
+    def get_desired_children_display(self):
+        return self.DESIRED_CHILDREN_DISPLAY.get(self.desired_children_count, self.desired_children_count)
+
+    def get_children_education_display(self):
+        return self.CHILDREN_EDUCATION_DISPLAY.get(self.children_education_preference, self.children_education_preference)
+
+    def calculate_compatibility(self, other_profile):
+        """Calculate compatibility score with another profile (0-100)."""
+        if not other_profile:
+            return 0
+
+        score = 0
+        total_weight = 0
+
+        # Denomination match (weight: 20)
+        if self.denomination and other_profile.denomination:
+            total_weight += 20
+            if self.denomination == other_profile.denomination:
+                score += 20
+            elif self.wants_spouse_same_denomination:
+                score += 0  # Must match if required
+            else:
+                score += 10  # Partial credit for different denominations
+
+        # Conservatism alignment (weight: 15)
+        conservatism_order = ['very_traditional', 'traditional', 'moderate', 'modern']
+        if self.conservatism_level and other_profile.conservatism_level:
+            total_weight += 15
+            try:
+                diff = abs(conservatism_order.index(self.conservatism_level) -
+                          conservatism_order.index(other_profile.conservatism_level))
+                score += max(0, 15 - (diff * 5))
+            except ValueError:
+                pass
+
+        # Fasting practice alignment (weight: 10)
+        fasting_order = ['strict', 'most', 'some', 'rarely', 'no']
+        if self.fasting_practice and other_profile.fasting_practice:
+            total_weight += 10
+            try:
+                diff = abs(fasting_order.index(self.fasting_practice) -
+                          fasting_order.index(other_profile.fasting_practice))
+                score += max(0, 10 - (diff * 2))
+            except ValueError:
+                pass
+
+        # Prayer frequency alignment (weight: 10)
+        prayer_order = ['multiple_daily', 'daily', 'weekly', 'occasionally']
+        if self.prayer_frequency and other_profile.prayer_frequency:
+            total_weight += 10
+            try:
+                diff = abs(prayer_order.index(self.prayer_frequency) -
+                          prayer_order.index(other_profile.prayer_frequency))
+                score += max(0, 10 - (diff * 3))
+            except ValueError:
+                pass
+
+        # Family role view (weight: 15)
+        if self.family_role_view and other_profile.family_role_view:
+            total_weight += 15
+            if self.family_role_view == other_profile.family_role_view:
+                score += 15
+            elif self.family_role_view in ['traditional', 'complementarian'] and \
+                 other_profile.family_role_view in ['traditional', 'complementarian']:
+                score += 12
+            elif 'flexible' in [self.family_role_view, other_profile.family_role_view]:
+                score += 10
+            else:
+                score += 5
+
+        # Modesty alignment (weight: 10)
+        modesty_order = ['very_modest', 'modest', 'moderate', 'flexible']
+        if self.modesty_level and other_profile.modesty_level:
+            total_weight += 10
+            try:
+                diff = abs(modesty_order.index(self.modesty_level) -
+                          modesty_order.index(other_profile.modesty_level))
+                score += max(0, 10 - (diff * 3))
+            except ValueError:
+                pass
+
+        # Children preference (weight: 10)
+        if self.wants_children and other_profile.wants_children:
+            total_weight += 10
+            if self.wants_children == other_profile.wants_children:
+                score += 10
+            elif self.wants_children in ['yes', 'maybe'] and other_profile.wants_children in ['yes', 'maybe']:
+                score += 7
+            else:
+                score += 3
+
+        # Church attendance (weight: 10)
+        attendance_order = ['weekly', 'monthly', 'holidays', 'rarely']
+        if self.church_attendance and other_profile.church_attendance:
+            total_weight += 10
+            try:
+                diff = abs(attendance_order.index(self.church_attendance) -
+                          attendance_order.index(other_profile.church_attendance))
+                score += max(0, 10 - (diff * 3))
+            except ValueError:
+                pass
+
+        # Calculate percentage
+        if total_weight == 0:
+            return 50  # Default if no comparable fields
+
+        return int((score / total_weight) * 100)
+
     def __repr__(self):
         return f'<Profile {self.first_name} ({self.user_id})>'
 

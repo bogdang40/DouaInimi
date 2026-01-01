@@ -163,6 +163,22 @@ def get_potential_matches(user, filters=None, page=1, per_page=20):
         if filters.get('has_children'):
             has_children_val = filters['has_children'] == 'yes'
             query = query.filter(Profile.has_children == has_children_val)
+
+        # Traditional values filters
+        if filters.get('conservatism_level'):
+            query = query.filter(Profile.conservatism_level == filters['conservatism_level'])
+
+        if filters.get('modesty_level'):
+            query = query.filter(Profile.modesty_level == filters['modesty_level'])
+
+        if filters.get('fasting_practice'):
+            query = query.filter(Profile.fasting_practice == filters['fasting_practice'])
+
+        if filters.get('family_role_view'):
+            query = query.filter(Profile.family_role_view == filters['family_role_view'])
+
+        if filters.get('marital_history'):
+            query = query.filter(Profile.marital_history == filters['marital_history'])
     
     # Order by last active (most active first)
     query = query.order_by(User.last_active.desc())
@@ -226,6 +242,12 @@ def search():
             'relationship_goal': form.relationship_goal.data,
             'education': form.education.data,
             'has_children': form.has_children.data,
+            # Traditional values filters
+            'conservatism_level': form.conservatism_level.data,
+            'modesty_level': form.modesty_level.data,
+            'fasting_practice': form.fasting_practice.data,
+            'family_role_view': form.family_role_view.data,
+            'marital_history': form.marital_history.data,
         }
         # Remove empty filters
         filters = {k: v for k, v in filters.items() if v}

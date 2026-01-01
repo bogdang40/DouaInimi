@@ -105,11 +105,59 @@
                 </div>
 
                 <!-- Has Children -->
-                <div class="mb-6">
+                <div class="mb-5">
                     <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
                         👶 Has Children
                     </label>
                     {{ form.has_children(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                </div>
+
+                <!-- Traditional Values Section -->
+                <div class="border-t border-surface-200 dark:border-white/10 pt-5 mt-5">
+                    <h3 class="text-sm font-semibold text-surface-700 dark:text-gray-300 mb-4 flex items-center">
+                        <i data-lucide="heart" class="w-4 h-4 mr-2 text-purple-500"></i>
+                        Traditional Values
+                    </h3>
+
+                    <!-- Conservatism Level -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                            ⚖️ Conservatism
+                        </label>
+                        {{ form.conservatism_level(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                    </div>
+
+                    <!-- Modesty Level -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                            👗 Modesty
+                        </label>
+                        {{ form.modesty_level(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                    </div>
+
+                    <!-- Fasting Practice -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                            🍽️ Fasting
+                        </label>
+                        {{ form.fasting_practice(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                    </div>
+
+                    <!-- Family Role View -->
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                            👨‍👩‍👧 Family Roles
+                        </label>
+                        {{ form.family_role_view(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                    </div>
+
+                    <!-- Marital History -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-surface-700 dark:text-gray-300 mb-2">
+                            💍 Marital History
+                        </label>
+                        {{ form.marital_history(class="w-full px-3 py-2.5 bg-surface-50 dark:bg-white/5 border border-surface-300 dark:border-white/10 rounded-lg text-surface-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent") }}
+                    </div>
                 </div>
 
                 <!-- Submit -->

@@ -147,16 +147,35 @@ class ProfileForm(FlaskForm):
     # Traditional/Conservative Values
     conservatism_level = SelectField('How Traditional Are You?', validators=[Optional()])
     head_covering = SelectField('Head Covering (Women)', validators=[Optional()])
+    church_attire_women = SelectField('Church Attire (Women)', validators=[Optional()])
+    modesty_level = SelectField('Modesty Level', validators=[Optional()])
     fasting_practice = SelectField('Fasting Practice', validators=[Optional()])
     prayer_frequency = SelectField('Prayer Frequency', validators=[Optional()])
     bible_reading = SelectField('Bible/Scripture Reading', validators=[Optional()])
     dietary_restrictions = SelectField('Dietary Practices', validators=[Optional()])
     family_role_view = SelectField('View on Family Roles', validators=[Optional()])
-    
+
+    # Orthodox Sacraments & Practices
+    confession_frequency = SelectField('Confession Frequency', validators=[Optional()])
+    communion_frequency = SelectField('Communion Frequency', validators=[Optional()])
+    icons_in_home = BooleanField('I have icons/prayer corner in my home')
+    saints_nameday = StringField('Patron Saint / Nameday', validators=[
+        Optional(),
+        Length(max=100)
+    ])
+
+    # Marital History
+    marital_history = SelectField('Marital History', validators=[Optional()])
+
+    # Family Planning
+    desired_children_count = SelectField('Desired Number of Children', validators=[Optional()])
+    children_education_preference = SelectField('Children Education Preference', validators=[Optional()])
+
     # Additional preferences
     wants_spouse_same_denomination = BooleanField('I prefer a spouse from the same denomination')
     willing_to_relocate = BooleanField('I am willing to relocate for the right person')
     wants_church_wedding = BooleanField('I want a church wedding')
+    seeks_modest_spouse = BooleanField('I am looking for a modest spouse')
     
     # What I'm Looking For
     looking_for_gender = SelectField('Looking For', choices=[
@@ -187,15 +206,28 @@ class ProfileForm(FlaskForm):
         self.denomination.choices = [('', 'Select your denomination')] + current_app.config['DENOMINATIONS']
         self.romanian_origin_region.choices = [('', 'Select region')] + current_app.config['ROMANIAN_REGIONS']
         self.state_province.choices = [('', 'Select state/province')] + current_app.config['US_STATES'] + current_app.config['CA_PROVINCES']
-        
+
         # Traditional values choices
         self.conservatism_level.choices = [('', 'Select your level')] + current_app.config['CONSERVATISM_LEVELS']
         self.head_covering.choices = [('', 'Select option')] + current_app.config['HEAD_COVERING_OPTIONS']
+        self.church_attire_women.choices = [('', 'Select option')] + current_app.config['CHURCH_ATTIRE_OPTIONS']
+        self.modesty_level.choices = [('', 'Select your level')] + current_app.config['MODESTY_OPTIONS']
         self.fasting_practice.choices = [('', 'Select your practice')] + current_app.config['FASTING_OPTIONS']
         self.prayer_frequency.choices = [('', 'How often do you pray?')] + current_app.config['PRAYER_OPTIONS']
         self.bible_reading.choices = [('', 'How often?')] + current_app.config['BIBLE_READING_OPTIONS']
         self.dietary_restrictions.choices = [('', 'Select your diet')] + current_app.config['DIETARY_OPTIONS']
         self.family_role_view.choices = [('', 'Select your view')] + current_app.config['FAMILY_ROLES']
+
+        # Orthodox sacraments
+        self.confession_frequency.choices = [('', 'How often?')] + current_app.config['CONFESSION_OPTIONS']
+        self.communion_frequency.choices = [('', 'How often?')] + current_app.config['COMMUNION_OPTIONS']
+
+        # Marital history
+        self.marital_history.choices = [('', 'Select your status')] + current_app.config['MARITAL_HISTORY_OPTIONS']
+
+        # Family planning
+        self.desired_children_count.choices = [('', 'Select preference')] + current_app.config['DESIRED_CHILDREN_OPTIONS']
+        self.children_education_preference.choices = [('', 'Select preference')] + current_app.config['CHILDREN_EDUCATION_OPTIONS']
     
     def validate_date_of_birth(self, field):
         """Ensure user is at least 18 years old."""

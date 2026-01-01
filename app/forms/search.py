@@ -82,6 +82,15 @@ class SearchForm(FlaskForm):
         ('no', 'No'),
     ], validators=[Optional()])
 
+    # Traditional Values Filters
+    conservatism_level = SelectField('Conservatism Level', validators=[Optional()])
+    modesty_level = SelectField('Modesty Level', validators=[Optional()])
+    fasting_practice = SelectField('Fasting Practice', validators=[Optional()])
+    family_role_view = SelectField('Family Role View', validators=[Optional()])
+
+    # Marital History
+    marital_history = SelectField('Marital History', validators=[Optional()])
+
     submit = SubmitField('Search')
     
     def __init__(self, *args, **kwargs):
@@ -90,4 +99,11 @@ class SearchForm(FlaskForm):
         self.denomination.choices = [('', 'Any')] + current_app.config['DENOMINATIONS']
         self.romanian_origin_region.choices = [('', 'Any')] + current_app.config['ROMANIAN_REGIONS']
         self.state_province.choices = [('', 'Any')] + current_app.config['US_STATES'] + current_app.config['CA_PROVINCES']
+
+        # Traditional values filters
+        self.conservatism_level.choices = [('', 'Any')] + current_app.config['CONSERVATISM_LEVELS']
+        self.modesty_level.choices = [('', 'Any')] + current_app.config['MODESTY_OPTIONS']
+        self.fasting_practice.choices = [('', 'Any')] + current_app.config['FASTING_OPTIONS']
+        self.family_role_view.choices = [('', 'Any')] + current_app.config['FAMILY_ROLES']
+        self.marital_history.choices = [('', 'Any')] + current_app.config['MARITAL_HISTORY_OPTIONS']
 

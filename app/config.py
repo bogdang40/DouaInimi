@@ -71,7 +71,67 @@ class Config:
         ('egalitarian', 'Egalitarian (shared responsibilities)'),
         ('flexible', 'Flexible / Open to discussion'),
     ]
-    
+
+    # Church attire (for women)
+    CHURCH_ATTIRE_OPTIONS = [
+        ('skirt_dress_only', 'Skirt/Dress only in church'),
+        ('modest_pants_ok', 'Modest pants acceptable'),
+        ('flexible', 'Flexible'),
+    ]
+
+    # Modesty level
+    MODESTY_OPTIONS = [
+        ('very_modest', 'Very Modest (long skirts, sleeves, no makeup)'),
+        ('modest', 'Modest (conservative clothing)'),
+        ('moderate', 'Moderate'),
+        ('flexible', 'Flexible'),
+    ]
+
+    # Orthodox Sacraments - Confession
+    CONFESSION_OPTIONS = [
+        ('regularly', 'Regularly (monthly or more)'),
+        ('before_communion', 'Before taking Communion'),
+        ('annually', 'Annually (during Great Lent)'),
+        ('major_feasts', 'Before major feasts'),
+        ('rarely', 'Rarely'),
+    ]
+
+    # Orthodox Sacraments - Communion
+    COMMUNION_OPTIONS = [
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('major_feasts', 'Major Feasts only'),
+        ('annually', 'Annually'),
+        ('rarely', 'Rarely'),
+    ]
+
+    # Marital history (important for Orthodox wedding rules)
+    MARITAL_HISTORY_OPTIONS = [
+        ('never_married', 'Never Married'),
+        ('divorced_civil', 'Divorced (Civil only)'),
+        ('divorced_church', 'Divorced (Church divorce)'),
+        ('widowed', 'Widowed'),
+        ('annulled', 'Marriage Annulled'),
+    ]
+
+    # Desired children count
+    DESIRED_CHILDREN_OPTIONS = [
+        ('1-2', '1-2 Children'),
+        ('3-4', '3-4 Children'),
+        ('5+', '5+ Children'),
+        ('as_god_wills', 'As God Wills'),
+        ('none', 'No Children'),
+    ]
+
+    # Children education preference
+    CHILDREN_EDUCATION_OPTIONS = [
+        ('orthodox_school', 'Orthodox Christian School'),
+        ('private_christian', 'Private Christian School'),
+        ('homeschool', 'Homeschool'),
+        ('public', 'Public School'),
+        ('flexible', 'Flexible / Open'),
+    ]
+
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///dating.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
