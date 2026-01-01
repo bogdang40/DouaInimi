@@ -131,6 +131,18 @@
                         <span class="text-8xl transform rotate-[15deg] border-8 border-red-500 text-red-500 font-black px-4 py-2 rounded-lg">NOPE</span>
                     </div>
                     
+                    <!-- Compatibility Score Badge -->
+                    {% if current_user.profile and profile %}
+                    {% set compat_score = current_user.profile.calculate_compatibility(profile) %}
+                    <div class="absolute top-8 left-4 flex items-center space-x-1.5
+                        {% if compat_score >= 80 %}bg-green-500/90{% elif compat_score >= 60 %}bg-amber-500/90{% else %}bg-surface-600/80{% endif %}
+                        backdrop-blur-sm rounded-full px-3 py-1.5 z-10"
+                        title="Values compatibility">
+                        <i data-lucide="heart" class="w-4 h-4 text-white"></i>
+                        <span class="text-white text-sm font-semibold">{{ compat_score }}% Match</span>
+                    </div>
+                    {% endif %}
+
                     <!-- Online indicator -->
                     {% if user.is_online %}
                     <div class="absolute top-8 right-4 flex items-center space-x-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 z-10">
