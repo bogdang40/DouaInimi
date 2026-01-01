@@ -811,6 +811,42 @@
     </script>
     {% endif %}
     
+    <!-- Lazy Loading Images -->
+    <script>
+        // Native lazy loading with fallback
+        (function() {
+            // Add loading="lazy" to all images without it
+            document.querySelectorAll('img:not([loading])').forEach(img => {
+                img.loading = 'lazy';
+            });
+
+            // Intersection Observer for custom lazy loading effects
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.removeAttribute('data-src');
+                            }
+                            img.classList.remove('lazy');
+                            img.classList.add('loaded');
+                            observer.unobserve(img);
+                        }
+                    });
+                }, {
+                    rootMargin: '50px 0px',
+                    threshold: 0.01
+                });
+
+                document.querySelectorAll('img.lazy').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            }
+        })();
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
