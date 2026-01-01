@@ -270,6 +270,7 @@
                             <form action="{{ url_for('discover.pass_user', user_id=user.id) }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit"
+                                        data-loading
                                         onclick="if('vibrate' in navigator) navigator.vibrate(10);"
                                         class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-surface-100 dark:bg-white/5 border border-surface-200 dark:border-white/10 rounded-xl text-surface-600 dark:text-gray-400 hover:bg-surface-200 dark:hover:bg-white/10 active:scale-95 transition text-sm">
                                     <i data-lucide="x" class="w-4 h-4"></i>
@@ -279,6 +280,7 @@
                             <form action="{{ url_for('discover.like_user', user_id=user.id) }}" method="POST" class="flex-1">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit"
+                                        data-loading
                                         onclick="if('vibrate' in navigator) navigator.vibrate(15);"
                                         class="w-full flex items-center justify-center space-x-1 px-3 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-400 hover:to-red-500 active:scale-95 transition text-sm">
                                     <i data-lucide="heart" class="w-4 h-4"></i>

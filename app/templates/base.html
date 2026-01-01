@@ -575,6 +575,58 @@
             from { opacity: 1; transform: translateY(0) scale(1); }
             to { opacity: 0; transform: translateY(-20px) scale(0.95); }
         }
+
+        /* ===== BUTTON LOADING STATES ===== */
+        .btn-loading {
+            position: relative;
+            pointer-events: none;
+        }
+
+        .btn-loading .btn-text {
+            opacity: 0;
+        }
+
+        .btn-loading .btn-spinner {
+            display: block;
+        }
+
+        .btn-spinner {
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+        }
+
+        @keyframes btn-spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Alternative inline spinner for smaller buttons */
+        .spinner-inline {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: btn-spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        /* Form submitting state */
+        form.submitting button[type="submit"],
+        form.submitting input[type="submit"] {
+            pointer-events: none;
+            opacity: 0.7;
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -800,6 +852,73 @@
                 warning: (msg, duration) => showToast(msg, 'warning', duration),
                 info: (msg, duration) => showToast(msg, 'info', duration)
             };
+        })();
+    </script>
+
+    <!-- Button Loading States -->
+    <script>
+        (function() {
+            // Add loading state to buttons with data-loading attribute
+            function addLoadingState(button, text) {
+                const originalContent = button.innerHTML;
+                button.dataset.originalContent = originalContent;
+                button.classList.add('btn-loading');
+                button.innerHTML = `<span class="btn-text">${originalContent}</span><span class="btn-spinner"></span>`;
+                if (text) {
+                    button.querySelector('.btn-text').textContent = text;
+                    button.querySelector('.btn-text').style.opacity = '1';
+                }
+            }
+
+            function removeLoadingState(button) {
+                button.classList.remove('btn-loading');
+                if (button.dataset.originalContent) {
+                    button.innerHTML = button.dataset.originalContent;
+                    delete button.dataset.originalContent;
+                }
+            }
+
+            // Auto-add loading state on form submit for buttons with data-loading
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                const submitBtn = form.querySelector('button[type="submit"][data-loading], input[type="submit"][data-loading]');
+
+                if (submitBtn) {
+                    const loadingText = submitBtn.dataset.loading || '';
+                    addLoadingState(submitBtn, loadingText);
+                    form.classList.add('submitting');
+
+                    // Haptic feedback
+                    if ('vibrate' in navigator) navigator.vibrate(15);
+                }
+            });
+
+            // Handle forms with confirmation dialogs (they might not submit)
+            document.querySelectorAll('form[onsubmit*="confirm"]').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    // Small delay to allow confirm dialog
+                    setTimeout(() => {
+                        if (!form.classList.contains('submitting')) {
+                            const submitBtn = form.querySelector('button[type="submit"].btn-loading');
+                            if (submitBtn) removeLoadingState(submitBtn);
+                        }
+                    }, 100);
+                });
+            });
+
+            // Expose functions globally
+            window.buttonLoading = {
+                start: addLoadingState,
+                stop: removeLoadingState
+            };
+
+            // For links that need loading state (HTMX, etc.)
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('a[data-loading]');
+                if (link && !link.classList.contains('btn-loading')) {
+                    addLoadingState(link, link.dataset.loading);
+                }
+            });
         })();
     </script>
     
