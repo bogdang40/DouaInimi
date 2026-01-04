@@ -1,0 +1,162 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Conversations{% endblock %}
+{% block header %}All Conversations{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Info Banner -->
+    <div class="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
+        <i data-lucide="shield" class="w-5 h-5 text-blue-400 mt-0.5"></i>
+        <div>
+            <p class="text-blue-200 font-medium">Safety & Moderation</p>
+            <p class="text-blue-300/70 text-sm">Review conversations for policy violations, harassment, or inappropriate content. All messages are shown including deleted ones.</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-4">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-purple-900/30 rounded-lg flex items-center justify-center">
+                <i data-lucide="message-square" class="w-5 h-5 text-purple-400"></i>
+            </div>
+            <div>
+                <p class="text-gray-400 text-xs uppercase tracking-wider">Active Conversations</p>
+                <p class="text-xl font-bold text-white">{{ total_conversations }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversations List -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-surface-950">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Users</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Messages</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Last Activity</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Match Status</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for item in conversations.items %}
+                    {% set match = item[0] %}
+                    {% set msg_count = item[1] %}
+                    {% set last_msg = item[2] %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <!-- Users -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <!-- User 1 -->
+                                <div class="flex items-center">
+                                    <img src="{{ match.user1.primary_photo_url }}" alt="" class="w-8 h-8 rounded-full object-cover border border-white/10">
+                                </div>
+                                
+                                <i data-lucide="arrow-left-right" class="w-4 h-4 text-gray-500"></i>
+                                
+                                <!-- User 2 -->
+                                <div class="flex items-center">
+                                    <img src="{{ match.user2.primary_photo_url }}" alt="" class="w-8 h-8 rounded-full object-cover border border-white/10">
+                                </div>
+                                
+                                <div class="ml-2">
+                                    <p class="text-white text-sm">
+                                        <a href="{{ url_for('admin.user_detail', user_id=match.user1_id) }}" class="hover:text-amber-400">
+                                            {{ match.user1.profile.first_name if match.user1.profile else match.user1.email.split('@')[0] }}
+                                        </a>
+                                        <span class="text-gray-500">&</span>
+                                        <a href="{{ url_for('admin.user_detail', user_id=match.user2_id) }}" class="hover:text-amber-400">
+                                            {{ match.user2.profile.first_name if match.user2.profile else match.user2.email.split('@')[0] }}
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Message Count -->
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-purple-900/30 text-purple-400 border border-purple-500/30">
+                                {{ msg_count }} messages
+                            </span>
+                        </td>
+                        
+                        <!-- Last Activity -->
+                        <td class="px-6 py-4">
+                            <span class="text-gray-300">{{ last_msg.strftime('%b %d, %Y') if last_msg else 'Unknown' }}</span>
+                            <p class="text-gray-500 text-xs">{{ last_msg.strftime('%H:%M') if last_msg else '' }}</p>
+                        </td>
+                        
+                        <!-- Match Status -->
+                        <td class="px-6 py-4">
+                            {% if match.is_active %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-900/30 text-green-400 border border-green-500/30">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400 border border-red-500/30">
+                                Unmatched
+                            </span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right">
+                            <a href="{{ url_for('admin.conversation_detail', match_id=match.id) }}" 
+                               class="inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded-lg transition-colors">
+                                <i data-lucide="eye" class="w-4 h-4 mr-1"></i> View Chat
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            No conversations yet
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if conversations.pages > 1 %}
+        <div class="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <p class="text-sm text-gray-400">
+                Showing page {{ conversations.page }} of {{ conversations.pages }}
+            </p>
+            <div class="flex gap-2">
+                {% if conversations.has_prev %}
+                <a href="{{ url_for('admin.conversations', page=conversations.prev_num) }}" 
+                   class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                    Previous
+                </a>
+                {% endif %}
+                {% for page_num in conversations.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == conversations.page %}
+                        <span class="px-3 py-1 bg-amber-600 text-white rounded">{{ page_num }}</span>
+                        {% else %}
+                        <a href="{{ url_for('admin.conversations', page=page_num) }}" 
+                           class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                            {{ page_num }}
+                        </a>
+                        {% endif %}
+                    {% else %}
+                    <span class="px-3 py-1 text-gray-500">...</span>
+                    {% endif %}
+                {% endfor %}
+                {% if conversations.has_next %}
+                <a href="{{ url_for('admin.conversations', page=conversations.next_num) }}" 
+                   class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

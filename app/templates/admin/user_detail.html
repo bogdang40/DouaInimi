@@ -122,6 +122,48 @@
             </div>
             {% endif %}
 
+            <!-- User's Matches -->
+            {% if user_matches %}
+            <div class="bg-surface-900 rounded-xl border border-pink-500/30 p-6">
+                <h3 class="text-lg font-bold text-pink-400 mb-4 flex items-center justify-between">
+                    <span class="flex items-center">
+                        <i data-lucide="heart" class="w-5 h-5 mr-2"></i>
+                        Matches ({{ matches_count }})
+                    </span>
+                    {% if matches_count > 10 %}
+                    <a href="{{ url_for('admin.matches', q=user.email) }}" class="text-xs text-pink-400 hover:text-pink-300">View All →</a>
+                    {% endif %}
+                </h3>
+                <div class="space-y-3">
+                    {% for match in user_matches %}
+                    {% set other_user = match.user2 if match.user1_id == user.id else match.user1 %}
+                    <div class="bg-surface-950 rounded-lg p-4 border border-white/5 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="{{ other_user.primary_photo_url }}" alt="" class="w-10 h-10 rounded-full object-cover border border-white/10">
+                            <div>
+                                <a href="{{ url_for('admin.user_detail', user_id=other_user.id) }}" class="text-white font-medium hover:text-amber-400 transition-colors">
+                                    {{ other_user.profile.first_name if other_user.profile else other_user.email.split('@')[0] }}
+                                </a>
+                                <p class="text-gray-500 text-xs">{{ match.matched_at.strftime('%b %d, %Y') if match.matched_at else 'Unknown' }}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            {% if match.is_active %}
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900/30 text-green-400">Active</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-red-900/30 text-red-400">Unmatched</span>
+                            {% endif %}
+                            <a href="{{ url_for('admin.conversation_detail', match_id=match.id) }}" 
+                               class="p-1.5 bg-surface-800 hover:bg-surface-700 rounded-lg transition-colors" title="View Conversation">
+                                <i data-lucide="message-circle" class="w-4 h-4 text-purple-400"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Reports About This User -->
             {% if reports_about %}
             <div class="bg-surface-900 rounded-xl border border-red-500/30 p-6">
@@ -245,8 +287,7 @@
                         </button>
                     </form>
 
-                    <!-- Toggle Admin (only if not self) -->
-                    {% if user.id != current_user.id %}
+                    <!-- Toggle Admin -->
                     <form method="POST" action="{{ url_for('admin.toggle_user_admin', user_id=user.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('{{ 'Remove admin' if user.is_admin else 'Grant admin' }} access?')"
@@ -255,12 +296,10 @@
                             {{ 'Remove Admin' if user.is_admin else 'Make Admin' }}
                         </button>
                     </form>
-                    {% endif %}
 
                     <div class="border-t border-white/10 pt-3 mt-3"></div>
 
                     <!-- Delete User -->
-                    {% if user.id != current_user.id %}
                     <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" onclick="return confirm('⚠️ PERMANENTLY DELETE {{ user.email }}?\\n\\nThis cannot be undone!') && prompt('Type DELETE to confirm') === 'DELETE'"
@@ -268,7 +307,6 @@
                             <i data-lucide="trash-2" class="w-4 h-4 mr-2"></i> Delete User
                         </button>
                     </form>
-                    {% endif %}
                 </div>
             </div>
         </div>

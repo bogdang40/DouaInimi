@@ -1,0 +1,172 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Conversation{% endblock %}
+{% block header %}Conversation Details{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Back Button -->
+    <a href="{{ url_for('admin.conversations') }}" class="inline-flex items-center text-gray-400 hover:text-white transition-colors">
+        <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Back to Conversations
+    </a>
+
+    <!-- Users Info Card -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-6">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- User 1 -->
+            <a href="{{ url_for('admin.user_detail', user_id=match.user1_id) }}" class="flex items-center gap-4 hover:bg-white/5 p-3 rounded-lg transition-colors">
+                <img src="{{ match.user1.primary_photo_url }}" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white/20">
+                <div>
+                    <h3 class="text-lg font-bold text-white">{{ match.user1.profile.first_name if match.user1.profile else 'No name' }}</h3>
+                    <p class="text-gray-400 text-sm">{{ match.user1.email }}</p>
+                    {% if match.user1.profile and match.user1.profile.age %}
+                    <p class="text-gray-500 text-xs">{{ match.user1.profile.age }} years old</p>
+                    {% endif %}
+                </div>
+            </a>
+            
+            <!-- Match Info -->
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto bg-pink-900/30 rounded-full flex items-center justify-center mb-2">
+                    <i data-lucide="heart" class="w-8 h-8 text-pink-500"></i>
+                </div>
+                <p class="text-gray-400 text-xs">Matched</p>
+                <p class="text-white font-medium">{{ match.matched_at.strftime('%b %d, %Y') if match.matched_at else 'Unknown' }}</p>
+                {% if not match.is_active %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400 border border-red-500/30 mt-2">
+                    Unmatched
+                </span>
+                {% endif %}
+            </div>
+            
+            <!-- User 2 -->
+            <a href="{{ url_for('admin.user_detail', user_id=match.user2_id) }}" class="flex items-center gap-4 hover:bg-white/5 p-3 rounded-lg transition-colors">
+                <div class="text-right">
+                    <h3 class="text-lg font-bold text-white">{{ match.user2.profile.first_name if match.user2.profile else 'No name' }}</h3>
+                    <p class="text-gray-400 text-sm">{{ match.user2.email }}</p>
+                    {% if match.user2.profile and match.user2.profile.age %}
+                    <p class="text-gray-500 text-xs">{{ match.user2.profile.age }} years old</p>
+                    {% endif %}
+                </div>
+                <img src="{{ match.user2.primary_photo_url }}" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-white/20">
+            </a>
+        </div>
+    </div>
+
+    <!-- Reports Warning -->
+    {% if reports %}
+    <div class="bg-red-900/20 border border-red-500/30 rounded-xl p-4">
+        <div class="flex items-start gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400 mt-0.5"></i>
+            <div>
+                <p class="text-red-200 font-medium">⚠️ Reports Between These Users</p>
+                <div class="mt-2 space-y-2">
+                    {% for report in reports %}
+                    <div class="bg-red-900/30 rounded-lg p-3">
+                        <p class="text-red-300 text-sm">
+                            <strong>{{ report.reporter.display_name if report.reporter else 'Unknown' }}</strong> reported 
+                            <strong>{{ report.reported.display_name if report.reported else 'Unknown' }}</strong>
+                            for: <em>{{ report.get_reason_display() }}</em>
+                        </p>
+                        {% if report.description %}
+                        <p class="text-red-400/70 text-xs mt-1">{{ report.description }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Conversation -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i data-lucide="message-circle" class="w-5 h-5 text-purple-400"></i>
+                Conversation ({{ messages|length }} messages)
+            </h3>
+            <span class="text-xs text-gray-500">Admin view - includes deleted messages</span>
+        </div>
+        
+        <div class="p-6 max-h-[600px] overflow-y-auto space-y-4" id="chat-container">
+            {% if messages %}
+                {% for message in messages %}
+                <div class="flex {% if message.sender_id == match.user1_id %}justify-start{% else %}justify-end{% endif %}">
+                    <div class="max-w-[70%] {% if message.sender_id == match.user1_id %}bg-surface-800{% else %}bg-amber-900/30{% endif %} rounded-2xl px-4 py-3 
+                                {% if message.deleted_by_sender or message.deleted_by_receiver %}opacity-50 border border-dashed border-red-500/30{% endif %}">
+                        <!-- Sender info -->
+                        <div class="flex items-center gap-2 mb-1">
+                            <img src="{{ message.sender.primary_photo_url if message.sender else '/static/images/default-avatar.svg' }}" 
+                                 alt="" class="w-5 h-5 rounded-full object-cover">
+                            <span class="text-xs font-medium {% if message.sender_id == match.user1_id %}text-blue-400{% else %}text-amber-400{% endif %}">
+                                {{ message.sender.profile.first_name if message.sender and message.sender.profile else message.sender.email.split('@')[0] if message.sender else 'Unknown' }}
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                {{ message.created_at.strftime('%b %d, %H:%M') if message.created_at else '' }}
+                            </span>
+                        </div>
+                        
+                        <!-- Message content -->
+                        <p class="text-gray-200 text-sm whitespace-pre-wrap break-words">{{ message.content }}</p>
+                        
+                        <!-- Status indicators -->
+                        <div class="flex items-center gap-2 mt-1">
+                            {% if message.is_read %}
+                            <span class="text-xs text-green-500 flex items-center gap-1">
+                                <i data-lucide="check-check" class="w-3 h-3"></i> Read
+                            </span>
+                            {% endif %}
+                            {% if message.deleted_by_sender %}
+                            <span class="text-xs text-red-400">Deleted by sender</span>
+                            {% endif %}
+                            {% if message.deleted_by_receiver %}
+                            <span class="text-xs text-red-400">Deleted by receiver</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="text-center py-12">
+                <i data-lucide="message-circle-off" class="w-12 h-12 text-gray-600 mx-auto mb-4"></i>
+                <p class="text-gray-500">No messages in this conversation</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-6">
+        <h3 class="text-lg font-bold text-white mb-4">Quick Actions</h3>
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('admin.user_detail', user_id=match.user1_id) }}" 
+               class="inline-flex items-center px-4 py-2 bg-surface-800 hover:bg-surface-700 text-white rounded-lg transition-colors">
+                <i data-lucide="user" class="w-4 h-4 mr-2"></i>
+                View {{ match.user1.profile.first_name if match.user1.profile else 'User 1' }}
+            </a>
+            <a href="{{ url_for('admin.user_detail', user_id=match.user2_id) }}" 
+               class="inline-flex items-center px-4 py-2 bg-surface-800 hover:bg-surface-700 text-white rounded-lg transition-colors">
+                <i data-lucide="user" class="w-4 h-4 mr-2"></i>
+                View {{ match.user2.profile.first_name if match.user2.profile else 'User 2' }}
+            </a>
+            <a href="{{ url_for('admin.matches') }}" 
+               class="inline-flex items-center px-4 py-2 bg-surface-800 hover:bg-surface-700 text-white rounded-lg transition-colors">
+                <i data-lucide="heart" class="w-4 h-4 mr-2"></i>
+                All Matches
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Scroll to bottom of chat
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('chat-container');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    });
+</script>
+{% endblock %}
+

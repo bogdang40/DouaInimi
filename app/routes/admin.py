@@ -4,7 +4,6 @@ import hashlib
 import secrets
 from functools import wraps
 from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, jsonify, session, current_app
-from flask_login import current_user
 from sqlalchemy import func, desc
 from sqlalchemy.orm import joinedload
 from datetime import datetime, timedelta
@@ -303,7 +302,14 @@ def user_detail(user_id):
     """View user details."""
     user = User.query.get_or_404(user_id)
 
-    # Get user's activity stats
+    # Get user's matches with eager loading
+    user_matches = Match.query.options(
+        joinedload(Match.user1).joinedload(User.profile),
+        joinedload(Match.user2).joinedload(User.profile)
+    ).filter(
+        (Match.user1_id == user_id) | (Match.user2_id == user_id)
+    ).order_by(desc(Match.matched_at)).limit(10).all()
+    
     matches_count = Match.query.filter(
         (Match.user1_id == user_id) | (Match.user2_id == user_id)
     ).count()
@@ -318,6 +324,7 @@ def user_detail(user_id):
 
     return render_template('admin/user_detail.html',
         user=user,
+        user_matches=user_matches,
         matches_count=matches_count,
         messages_sent=messages_sent,
         reports_about=reports_about,
@@ -330,10 +337,6 @@ def user_detail(user_id):
 def toggle_user_active(user_id):
     """Suspend or reactivate a user."""
     user = User.query.get_or_404(user_id)
-    
-    if user.id == current_user.id:
-        flash("You cannot suspend yourself.", "error")
-        return redirect(url_for('admin.user_detail', user_id=user_id))
     
     user.is_active = not user.is_active
     db.session.commit()
@@ -385,10 +388,6 @@ def toggle_user_admin(user_id):
     """Toggle admin status."""
     user = User.query.get_or_404(user_id)
     
-    if user.id == current_user.id:
-        flash("You cannot modify your own admin status.", "error")
-        return redirect(url_for('admin.user_detail', user_id=user_id))
-    
     user.is_admin = not user.is_admin
     db.session.commit()
     
@@ -402,13 +401,30 @@ def toggle_user_admin(user_id):
 @admin_required
 def delete_user(user_id):
     """Permanently delete a user."""
+    from app.models.match import Pass
+    
     user = User.query.get_or_404(user_id)
-    
-    if user.id == current_user.id:
-        flash("You cannot delete yourself.", "error")
-        return redirect(url_for('admin.user_detail', user_id=user_id))
-    
     email = user.email
+    
+    # Delete related records that don't have cascade delete set up
+    # Delete matches where user is user1 or user2
+    Match.query.filter(
+        (Match.user1_id == user_id) | (Match.user2_id == user_id)
+    ).delete(synchronize_session=False)
+    
+    # Delete reports where user is reporter, reported, or resolver
+    Report.query.filter(
+        (Report.reporter_id == user_id) | 
+        (Report.reported_id == user_id) | 
+        (Report.resolved_by_id == user_id)
+    ).delete(synchronize_session=False)
+    
+    # Delete passes where user is passer or passed
+    Pass.query.filter(
+        (Pass.passer_id == user_id) | (Pass.passed_id == user_id)
+    ).delete(synchronize_session=False)
+    
+    # Now delete the user (cascades will handle profile, photos, likes, messages, blocks)
     db.session.delete(user)
     db.session.commit()
     
@@ -478,6 +494,8 @@ def report_detail(report_id):
 @admin_required
 def resolve_report(report_id):
     """Resolve a report."""
+    from app.models.match import Pass
+    
     report = Report.query.get_or_404(report_id)
     
     action = request.form.get('action')
@@ -486,21 +504,18 @@ def resolve_report(report_id):
     if action == 'dismiss':
         report.status = 'dismissed'
         report.resolution_notes = notes
-        report.resolved_by_id = current_user.id
         report.resolved_at = datetime.utcnow()
         flash("Report dismissed.", "success")
     
     elif action == 'warn':
         report.status = 'resolved'
         report.resolution_notes = f"Warning issued. {notes}"
-        report.resolved_by_id = current_user.id
         report.resolved_at = datetime.utcnow()
         flash("Warning issued to user.", "success")
     
     elif action == 'suspend':
         report.status = 'resolved'
         report.resolution_notes = f"User suspended. {notes}"
-        report.resolved_by_id = current_user.id
         report.resolved_at = datetime.utcnow()
         
         # Suspend the reported user
@@ -513,12 +528,28 @@ def resolve_report(report_id):
     elif action == 'ban':
         report.status = 'resolved'
         report.resolution_notes = f"User banned and deleted. {notes}"
-        report.resolved_by_id = current_user.id
         report.resolved_at = datetime.utcnow()
         
-        # Delete the reported user
+        # Delete the reported user with proper cleanup
         reported_user = User.query.get(report.reported_id)
         if reported_user:
+            user_id = reported_user.id
+            
+            # Delete related records that don't have cascade delete
+            Match.query.filter(
+                (Match.user1_id == user_id) | (Match.user2_id == user_id)
+            ).delete(synchronize_session=False)
+            
+            Report.query.filter(
+                (Report.reporter_id == user_id) | 
+                (Report.reported_id == user_id) | 
+                (Report.resolved_by_id == user_id)
+            ).delete(synchronize_session=False)
+            
+            Pass.query.filter(
+                (Pass.passer_id == user_id) | (Pass.passed_id == user_id)
+            ).delete(synchronize_session=False)
+            
             db.session.delete(reported_user)
         
         flash("User has been banned and deleted.", "success")
@@ -738,3 +769,158 @@ def approve_all_photos():
 
     flash(f"Approved {count} photos.", "success")
     return redirect(url_for('admin.photos'))
+
+
+# ========== MATCHES ==========
+
+@admin_bp.route('/matches')
+@admin_required
+def matches():
+    """View all matches."""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('q', '')
+    
+    # Eager load both users to avoid N+1 queries
+    query = Match.query.options(
+        joinedload(Match.user1).joinedload(User.profile),
+        joinedload(Match.user2).joinedload(User.profile)
+    )
+    
+    # Filter by search if provided (search in user emails)
+    if search:
+        query = query.join(User, db.or_(
+            Match.user1_id == User.id,
+            Match.user2_id == User.id
+        )).filter(User.email.ilike(f'%{search}%'))
+    
+    matches_list = query.order_by(desc(Match.matched_at)).paginate(page=page, per_page=20)
+    
+    # Stats
+    total_matches = Match.query.filter_by(is_active=True).count()
+    today_matches = Match.query.filter(
+        Match.matched_at >= datetime.utcnow().date()
+    ).count()
+    week_matches = Match.query.filter(
+        Match.matched_at >= datetime.utcnow() - timedelta(days=7)
+    ).count()
+    
+    return render_template('admin/matches.html',
+        matches=matches_list,
+        search=search,
+        total_matches=total_matches,
+        today_matches=today_matches,
+        week_matches=week_matches
+    )
+
+
+@admin_bp.route('/matches/<int:match_id>')
+@admin_required
+def match_detail(match_id):
+    """View match details and conversation."""
+    match = Match.query.options(
+        joinedload(Match.user1).joinedload(User.profile),
+        joinedload(Match.user2).joinedload(User.profile)
+    ).get_or_404(match_id)
+    
+    # Get all messages in this conversation
+    messages = Message.query.filter_by(match_id=match_id)\
+        .order_by(Message.created_at.asc()).all()
+    
+    return render_template('admin/match_detail.html',
+        match=match,
+        messages=messages
+    )
+
+
+# ========== CONVERSATIONS (Safety) ==========
+
+@admin_bp.route('/conversations')
+@admin_required
+def conversations():
+    """View all conversations with message counts."""
+    page = request.args.get('page', 1, type=int)
+    
+    # Get matches with message counts using a subquery
+    message_count = db.session.query(
+        Message.match_id,
+        func.count(Message.id).label('message_count'),
+        func.max(Message.created_at).label('last_message_at')
+    ).group_by(Message.match_id).subquery()
+    
+    # Join with matches
+    query = db.session.query(
+        Match,
+        func.coalesce(message_count.c.message_count, 0).label('message_count'),
+        message_count.c.last_message_at
+    ).outerjoin(
+        message_count, Match.id == message_count.c.match_id
+    ).options(
+        joinedload(Match.user1).joinedload(User.profile),
+        joinedload(Match.user2).joinedload(User.profile)
+    ).filter(
+        message_count.c.message_count > 0  # Only show matches with messages
+    ).order_by(desc(message_count.c.last_message_at))
+    
+    # Paginate manually since we're using a custom query
+    total = query.count()
+    items = query.offset((page - 1) * 20).limit(20).all()
+    
+    # Create a pseudo-pagination object
+    class Pagination:
+        def __init__(self, items, page, per_page, total):
+            self.items = items
+            self.page = page
+            self.per_page = per_page
+            self.total = total
+            self.pages = (total + per_page - 1) // per_page
+            self.has_prev = page > 1
+            self.has_next = page < self.pages
+            self.prev_num = page - 1
+            self.next_num = page + 1
+        
+        def iter_pages(self, left_edge=2, left_current=2, right_current=3, right_edge=2):
+            last = 0
+            for num in range(1, self.pages + 1):
+                if num <= left_edge or \
+                   (num > self.page - left_current - 1 and num < self.page + right_current) or \
+                   num > self.pages - right_edge:
+                    if last + 1 != num:
+                        yield None
+                    yield num
+                    last = num
+    
+    pagination = Pagination(items, page, 20, total)
+    
+    return render_template('admin/conversations.html',
+        conversations=pagination,
+        total_conversations=total
+    )
+
+
+@admin_bp.route('/conversations/<int:match_id>')
+@admin_required  
+def conversation_detail(match_id):
+    """View full conversation between two users."""
+    match = Match.query.options(
+        joinedload(Match.user1).joinedload(User.profile),
+        joinedload(Match.user2).joinedload(User.profile)
+    ).get_or_404(match_id)
+    
+    # Get all messages including deleted ones (for admin view)
+    messages = Message.query.options(
+        joinedload(Message.sender)
+    ).filter_by(match_id=match_id).order_by(Message.created_at.asc()).all()
+    
+    # Check for any reports between these users
+    reports = Report.query.filter(
+        db.or_(
+            db.and_(Report.reporter_id == match.user1_id, Report.reported_id == match.user2_id),
+            db.and_(Report.reporter_id == match.user2_id, Report.reported_id == match.user1_id)
+        )
+    ).all()
+    
+    return render_template('admin/conversation_detail.html',
+        match=match,
+        messages=messages,
+        reports=reports
+    )

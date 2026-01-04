@@ -20,6 +20,7 @@ def run_migrations():
         
         migrations = [
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE",
+            "UPDATE users SET is_approved = TRUE WHERE is_approved IS NULL OR is_approved = FALSE",  # Auto-approve existing users
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS description TEXT",
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_by_id INTEGER",
             "ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP",

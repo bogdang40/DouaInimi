@@ -93,6 +93,19 @@
                         <i data-lucide="users" class="w-5 h-5 mr-3 {{ 'text-green-500' if request.endpoint == 'admin.users' else 'group-hover:text-green-400' }}"></i>
                         <span class="font-medium">All Users</span>
                     </a>
+                    
+                    <a href="{{ url_for('admin.matches') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'matches' in request.endpoint }}">
+                        <i data-lucide="heart" class="w-5 h-5 mr-3 {{ 'text-pink-500' if 'matches' in request.endpoint else 'group-hover:text-pink-400' }}"></i>
+                        <span class="font-medium">Matches</span>
+                    </a>
+                    
+                    <a href="{{ url_for('admin.photos') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'photos' in request.endpoint }}">
+                        <i data-lucide="image" class="w-5 h-5 mr-3 {{ 'text-cyan-500' if 'photos' in request.endpoint else 'group-hover:text-cyan-400' }}"></i>
+                        <span class="font-medium">Photos</span>
+                        {% if pending_photos_count and pending_photos_count > 0 %}
+                        <span class="ml-auto bg-cyan-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ pending_photos_count }}</span>
+                        {% endif %}
+                    </a>
 
                     <!-- Safety -->
                     <div class="mt-6 mb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Safety</div>
@@ -108,6 +121,11 @@
                     <a href="{{ url_for('admin.flagged_content') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'flagged' in request.endpoint }}">
                         <i data-lucide="alert-triangle" class="w-5 h-5 mr-3 {{ 'text-orange-500' if 'flagged' in request.endpoint else 'group-hover:text-orange-400' }}"></i>
                         <span class="font-medium">Flagged Content</span>
+                    </a>
+                    
+                    <a href="{{ url_for('admin.conversations') }}" class="flex items-center px-4 py-3 text-gray-300 rounded-lg hover:bg-white/5 hover:text-white transition-colors group {{ 'bg-white/10 text-white' if 'conversation' in request.endpoint }}">
+                        <i data-lucide="message-square" class="w-5 h-5 mr-3 {{ 'text-purple-500' if 'conversation' in request.endpoint else 'group-hover:text-purple-400' }}"></i>
+                        <span class="font-medium">Conversations</span>
                     </a>
 
                     <!-- Analytics -->

@@ -22,6 +22,8 @@ def run_migrations():
         migrations = [
             # Users table - add is_approved column
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE",
+            # Auto-approve all existing users (new users auto-approved, admin reviews later)
+            "UPDATE users SET is_approved = TRUE WHERE is_approved IS NULL OR is_approved = FALSE",
             # Users table - add account lockout columns
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP",

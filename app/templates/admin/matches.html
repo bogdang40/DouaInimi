@@ -1,0 +1,192 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Matches{% endblock %}
+{% block header %}All Matches{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-surface-900 rounded-xl p-4 border border-white/5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Total Matches</p>
+                    <p class="text-2xl font-bold text-white mt-1">{{ total_matches }}</p>
+                </div>
+                <div class="w-10 h-10 bg-pink-900/30 rounded-lg flex items-center justify-center">
+                    <i data-lucide="heart" class="w-5 h-5 text-pink-400"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-900 rounded-xl p-4 border border-white/5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">Today</p>
+                    <p class="text-2xl font-bold text-white mt-1">{{ today_matches }}</p>
+                </div>
+                <div class="w-10 h-10 bg-green-900/30 rounded-lg flex items-center justify-center">
+                    <i data-lucide="calendar" class="w-5 h-5 text-green-400"></i>
+                </div>
+            </div>
+        </div>
+        <div class="bg-surface-900 rounded-xl p-4 border border-white/5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-400 text-xs uppercase tracking-wider">This Week</p>
+                    <p class="text-2xl font-bold text-white mt-1">{{ week_matches }}</p>
+                </div>
+                <div class="w-10 h-10 bg-blue-900/30 rounded-lg flex items-center justify-center">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 p-4">
+        <form method="GET" class="flex gap-4">
+            <div class="flex-1">
+                <input type="text" name="q" value="{{ search }}" placeholder="Search by email..."
+                       class="w-full bg-surface-800 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500/50">
+            </div>
+            <button type="submit" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                Search
+            </button>
+            {% if search %}
+            <a href="{{ url_for('admin.matches') }}" class="bg-surface-700 hover:bg-surface-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Clear
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Matches Table -->
+    <div class="bg-surface-900 rounded-xl border border-white/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-surface-950">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">User 1</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider"></th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">User 2</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Matched</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for match in matches.items %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <!-- User 1 -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <img src="{{ match.user1.primary_photo_url }}" alt="" class="w-10 h-10 rounded-full object-cover border border-white/10 mr-3">
+                                <div>
+                                    <a href="{{ url_for('admin.user_detail', user_id=match.user1_id) }}" class="text-white font-medium hover:text-amber-400 transition-colors">
+                                        {{ match.user1.profile.first_name if match.user1.profile else match.user1.email.split('@')[0] }}
+                                    </a>
+                                    <p class="text-gray-500 text-xs">{{ match.user1.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Heart Icon -->
+                        <td class="px-2 py-4 text-center">
+                            <i data-lucide="heart" class="w-5 h-5 text-pink-500 inline"></i>
+                        </td>
+                        
+                        <!-- User 2 -->
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <img src="{{ match.user2.primary_photo_url }}" alt="" class="w-10 h-10 rounded-full object-cover border border-white/10 mr-3">
+                                <div>
+                                    <a href="{{ url_for('admin.user_detail', user_id=match.user2_id) }}" class="text-white font-medium hover:text-amber-400 transition-colors">
+                                        {{ match.user2.profile.first_name if match.user2.profile else match.user2.email.split('@')[0] }}
+                                    </a>
+                                    <p class="text-gray-500 text-xs">{{ match.user2.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Match Date -->
+                        <td class="px-6 py-4">
+                            <span class="text-gray-300">{{ match.matched_at.strftime('%b %d, %Y') if match.matched_at else 'Unknown' }}</span>
+                            <p class="text-gray-500 text-xs">{{ match.matched_at.strftime('%H:%M') if match.matched_at else '' }}</p>
+                        </td>
+                        
+                        <!-- Status -->
+                        <td class="px-6 py-4">
+                            {% if match.is_active %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-900/30 text-green-400 border border-green-500/30">
+                                Active
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-900/30 text-red-400 border border-red-500/30">
+                                Unmatched
+                            </span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right">
+                            <a href="{{ url_for('admin.conversation_detail', match_id=match.id) }}" 
+                               class="inline-flex items-center px-3 py-1.5 bg-surface-800 hover:bg-surface-700 text-white text-sm rounded-lg transition-colors">
+                                <i data-lucide="message-circle" class="w-4 h-4 mr-1"></i> View Chat
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            {% if search %}
+                            No matches found for "{{ search }}"
+                            {% else %}
+                            No matches yet
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if matches.pages > 1 %}
+        <div class="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <p class="text-sm text-gray-400">
+                Showing {{ (matches.page - 1) * 20 + 1 }} to {{ min(matches.page * 20, matches.total) }} of {{ matches.total }} matches
+            </p>
+            <div class="flex gap-2">
+                {% if matches.has_prev %}
+                <a href="{{ url_for('admin.matches', page=matches.prev_num, q=search) }}" 
+                   class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                    Previous
+                </a>
+                {% endif %}
+                {% for page_num in matches.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num == matches.page %}
+                        <span class="px-3 py-1 bg-amber-600 text-white rounded">{{ page_num }}</span>
+                        {% else %}
+                        <a href="{{ url_for('admin.matches', page=page_num, q=search) }}" 
+                           class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                            {{ page_num }}
+                        </a>
+                        {% endif %}
+                    {% else %}
+                    <span class="px-3 py-1 text-gray-500">...</span>
+                    {% endif %}
+                {% endfor %}
+                {% if matches.has_next %}
+                <a href="{{ url_for('admin.matches', page=matches.next_num, q=search) }}" 
+                   class="px-3 py-1 bg-surface-800 hover:bg-surface-700 text-white rounded transition-colors">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
