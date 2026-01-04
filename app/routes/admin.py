@@ -400,35 +400,63 @@ def toggle_user_admin(user_id):
 @admin_bp.route('/users/<int:user_id>/delete', methods=['POST'])
 @admin_required
 def delete_user(user_id):
-    """Permanently delete a user."""
+    """Permanently delete a user and all related data."""
     from app.models.match import Pass
     
     user = User.query.get_or_404(user_id)
     email = user.email
     
-    # Delete related records that don't have cascade delete set up
-    # Delete matches where user is user1 or user2
-    Match.query.filter(
-        (Match.user1_id == user_id) | (Match.user2_id == user_id)
-    ).delete(synchronize_session=False)
+    try:
+        # Get all match IDs for this user first
+        match_ids = [m.id for m in Match.query.filter(
+            (Match.user1_id == user_id) | (Match.user2_id == user_id)
+        ).all()]
+        
+        # Delete messages in those matches first
+        if match_ids:
+            Message.query.filter(Message.match_id.in_(match_ids)).delete(synchronize_session=False)
+        
+        # Delete matches where user is user1 or user2
+        Match.query.filter(
+            (Match.user1_id == user_id) | (Match.user2_id == user_id)
+        ).delete(synchronize_session=False)
+        
+        # Clear resolver reference in reports (set to NULL instead of delete)
+        Report.query.filter(Report.resolved_by_id == user_id).update(
+            {'resolved_by_id': None}, synchronize_session=False
+        )
+        
+        # Delete reports where user is reporter or reported
+        Report.query.filter(
+            (Report.reporter_id == user_id) | (Report.reported_id == user_id)
+        ).delete(synchronize_session=False)
+        
+        # Delete passes where user is passer or passed
+        Pass.query.filter(
+            (Pass.passer_id == user_id) | (Pass.passed_id == user_id)
+        ).delete(synchronize_session=False)
+        
+        # Delete likes involving this user
+        Like.query.filter(
+            (Like.liker_id == user_id) | (Like.liked_id == user_id)
+        ).delete(synchronize_session=False)
+        
+        # Delete blocks involving this user
+        Block.query.filter(
+            (Block.blocker_id == user_id) | (Block.blocked_id == user_id)
+        ).delete(synchronize_session=False)
+        
+        # Now delete the user (cascades will handle profile and photos)
+        db.session.delete(user)
+        db.session.commit()
+        
+        flash(f"User {email} has been permanently deleted.", "success")
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error deleting user {user_id}: {e}")
+        flash(f"Error deleting user: {str(e)}", "error")
+        return redirect(url_for('admin.user_detail', user_id=user_id))
     
-    # Delete reports where user is reporter, reported, or resolver
-    Report.query.filter(
-        (Report.reporter_id == user_id) | 
-        (Report.reported_id == user_id) | 
-        (Report.resolved_by_id == user_id)
-    ).delete(synchronize_session=False)
-    
-    # Delete passes where user is passer or passed
-    Pass.query.filter(
-        (Pass.passer_id == user_id) | (Pass.passed_id == user_id)
-    ).delete(synchronize_session=False)
-    
-    # Now delete the user (cascades will handle profile, photos, likes, messages, blocks)
-    db.session.delete(user)
-    db.session.commit()
-    
-    flash(f"User {email} has been permanently deleted.", "success")
     return redirect(url_for('admin.users'))
 
 
@@ -535,19 +563,41 @@ def resolve_report(report_id):
         if reported_user:
             user_id = reported_user.id
             
-            # Delete related records that don't have cascade delete
+            # Get all match IDs for this user first
+            match_ids = [m.id for m in Match.query.filter(
+                (Match.user1_id == user_id) | (Match.user2_id == user_id)
+            ).all()]
+            
+            # Delete messages in those matches first
+            if match_ids:
+                Message.query.filter(Message.match_id.in_(match_ids)).delete(synchronize_session=False)
+            
+            # Delete matches
             Match.query.filter(
                 (Match.user1_id == user_id) | (Match.user2_id == user_id)
             ).delete(synchronize_session=False)
             
+            # Clear resolver reference in reports
+            Report.query.filter(Report.resolved_by_id == user_id).update(
+                {'resolved_by_id': None}, synchronize_session=False
+            )
+            
+            # Delete reports where user is reporter or reported
             Report.query.filter(
-                (Report.reporter_id == user_id) | 
-                (Report.reported_id == user_id) | 
-                (Report.resolved_by_id == user_id)
+                (Report.reporter_id == user_id) | (Report.reported_id == user_id)
             ).delete(synchronize_session=False)
             
+            # Delete passes, likes, blocks
             Pass.query.filter(
                 (Pass.passer_id == user_id) | (Pass.passed_id == user_id)
+            ).delete(synchronize_session=False)
+            
+            Like.query.filter(
+                (Like.liker_id == user_id) | (Like.liked_id == user_id)
+            ).delete(synchronize_session=False)
+            
+            Block.query.filter(
+                (Block.blocker_id == user_id) | (Block.blocked_id == user_id)
             ).delete(synchronize_session=False)
             
             db.session.delete(reported_user)

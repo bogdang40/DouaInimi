@@ -206,8 +206,8 @@ def create_app(config_name=None):
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.socket.io https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://static.cloudflareinsights.com; "
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-                "img-src 'self' data: https: blob:; "
-                "connect-src 'self' wss: ws: https://unpkg.com https://cdn.socket.io https://cloudflareinsights.com; "
+                "img-src 'self' data: https: blob: https://*.blob.core.windows.net; "
+                "connect-src 'self' wss: ws: https: https://unpkg.com https://cdn.socket.io https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://static.cloudflareinsights.com https://*.blob.core.windows.net; "
                 "frame-ancestors 'self';"
             )
             response.headers['Content-Security-Policy'] = csp
